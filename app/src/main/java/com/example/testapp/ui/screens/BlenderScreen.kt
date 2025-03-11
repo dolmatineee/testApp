@@ -463,7 +463,8 @@ fun BlenderScreen(
                             it
                         )
                     },
-                    onAttemptSelected = { viewModel.selectAttempt(it) }
+                    onAttemptSelected = { viewModel.selectAttempt(it) },
+                    onClear = {viewModel.clearTestAttempt(selectedReagentForTable, it.id)}
                 )
             }
 
@@ -788,7 +789,8 @@ fun ReagentTable(
     onTestAttemptUpdated: (TestAttempt) -> Unit,
     onTestAttemptAdded: () -> Unit,
     onTestAttemptRemoved: (Int) -> Unit,
-    onAttemptSelected: (Int) -> Unit
+    onAttemptSelected: (Int) -> Unit,
+    onClear: (TestAttempt) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -801,7 +803,7 @@ fun ReagentTable(
             onReagentSelected = onReagentSelected
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Список тестов в LazyVerticalGrid
         LazyVerticalGrid(
@@ -814,7 +816,14 @@ fun ReagentTable(
                 TestAttemptCard(
                     attempt = attempt,
                     isSelected = attempt.id == selectedAttempt?.id,
-                    onClick = { onAttemptSelected(attempt.id) },
+                    onClick = {
+                        if (attempt.id == selectedAttempt?.id) {
+                            onAttemptSelected(-1)
+                        } else {
+                            onAttemptSelected(attempt.id)
+                        }
+                              }
+                    ,
                     onDelete = { onTestAttemptRemoved(attempt.id) }
                 )
             }
@@ -845,7 +854,9 @@ fun ReagentTable(
                 onSave = { updatedAttempt ->
                     onTestAttemptUpdated(updatedAttempt)
                 },
-                onCancel = { onAttemptSelected(-1) } // Сброс выбора
+                onClear = { clearAttempt ->
+                    onClear(clearAttempt)
+                }
             )
         }
     }
@@ -988,7 +999,7 @@ fun AddTestButton(onClick: () -> Unit) {
 fun TestAttemptForm(
     attempt: TestAttempt,
     onSave: (TestAttempt) -> Unit,
-    onCancel: () -> Unit
+    onClear: (TestAttempt) -> Unit
 ) {
     var flowRate by remember { mutableStateOf(attempt.flowRate.toString()) }
     var concentration by remember { mutableStateOf(attempt.concentration.toString()) }
@@ -1002,9 +1013,30 @@ fun TestAttemptForm(
         actualAmount = attempt.actualAmount.toString()
     }
 
-    Column(
-        modifier = Modifier.padding(top = 4.dp)
-    ) {
+    val clearAttempt = attempt.copy(
+        flowRate = 0.0,
+        concentration =  0.0,
+        testTime = 0.0,
+        actualAmount =  0.0
+    )
+
+
+    fun updateAttempt() {
+        val updatedAttempt = attempt.copy(
+            flowRate = flowRate.toDoubleOrNull() ?: 0.0,
+            concentration = concentration.toDoubleOrNull() ?: 0.0,
+            testTime = testTime.toDoubleOrNull() ?: 0.0,
+            actualAmount = actualAmount.toDoubleOrNull() ?: 0.0
+        )
+        onSave(updatedAttempt)
+    }
+
+    LaunchedEffect(flowRate, concentration, testTime, actualAmount) {
+        updateAttempt()
+    }
+
+    Column(modifier = Modifier.padding(top = 4.dp)) {
+
         CustomTextField(
             value = flowRate,
             onValueChange = { flowRate = it },
@@ -1012,6 +1044,7 @@ fun TestAttemptForm(
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
+
         CustomTextField(
             value = concentration,
             onValueChange = { concentration = it },
@@ -1019,6 +1052,8 @@ fun TestAttemptForm(
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
+
+
         CustomTextField(
             value = testTime,
             onValueChange = { testTime = it },
@@ -1026,12 +1061,28 @@ fun TestAttemptForm(
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
+
+
         CustomTextField(
             value = actualAmount,
             onValueChange = { actualAmount = it },
             label = "Факт",
             modifier = Modifier.fillMaxWidth()
         )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                flowRate = "0"
+                concentration = "0"
+                testTime = "0"
+                actualAmount = "0"
+                onClear(clearAttempt)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Очистить")
+        }
     }
 }
 

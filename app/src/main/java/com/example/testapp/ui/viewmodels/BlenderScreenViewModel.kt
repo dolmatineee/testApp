@@ -68,11 +68,9 @@ class BlenderScreenViewModel @Inject constructor(
     private val _reagents = listOf("ТТ ВС марка 1", "ТТ АВ", "ТТ ВА марка АР")
     val reagents: List<String> get() = _reagents
 
-    // Выбранный реагент
     private val _selectedReagentForTable = MutableStateFlow(_reagents.first())
     val selectedReagentForTable: StateFlow<String> get() = _selectedReagentForTable
 
-    // Тесты для каждого реагента
     private val _testAttempts = MutableStateFlow<Map<String, List<TestAttempt>>>(emptyMap())
     val testAttempts: StateFlow<Map<String, List<TestAttempt>>> get() = _testAttempts
 
@@ -82,9 +80,6 @@ class BlenderScreenViewModel @Inject constructor(
     private val _selectedAttempt = MutableStateFlow<TestAttempt?>(null)
     val selectedAttempt: StateFlow<TestAttempt?> get() = _selectedAttempt
 
-
-
-    // Используем MutableStateFlow для хранения фотографий для каждого реагента
     private val _photosForReagents = MutableStateFlow<Map<String, List<Photo>>>(emptyMap())
     val photosForReagents: StateFlow<Map<String, List<Photo>>> get() = _photosForReagents
 
@@ -101,12 +96,14 @@ class BlenderScreenViewModel @Inject constructor(
         )
     }
 
-    // Выбор реагента
+
     fun selectReagent(reagent: String) {
         _selectedReagentForTable.value = reagent
-        // Открываем первый тест для нового реагента
-        _selectedAttemptId.value = _testAttempts.value[reagent]?.firstOrNull()?.id
+        _selectedAttemptId.value = null
+        _selectedAttempt.value = null
     }
+
+
 
     // Добавление нового теста
     fun addTestAttempt(reagent: String) {
@@ -118,7 +115,7 @@ class BlenderScreenViewModel @Inject constructor(
         _selectedAttemptId.value = newAttempt.id
         _selectedAttempt.value = newAttempt
     }
-    // Обновление теста
+
     fun updateTestAttempt(reagent: String, updatedAttempt: TestAttempt) {
         val currentAttempts = _testAttempts.value[reagent] ?: emptyList()
         val updatedAttempts = currentAttempts.map {
@@ -127,30 +124,57 @@ class BlenderScreenViewModel @Inject constructor(
         _testAttempts.update { currentMap ->
             currentMap + (reagent to updatedAttempts)
         }
-        // Если обновили выбранный тест, обновляем _selectedAttempt
         if (updatedAttempt.id == _selectedAttemptId.value) {
             _selectedAttempt.value = updatedAttempt
         }
     }
 
-    // Удаление теста
-    fun removeTestAttempt(reagent: String, attemptId: Int) {
+    fun clearTestAttempt(reagent: String, attemptId: Int) {
         val currentAttempts = _testAttempts.value[reagent] ?: emptyList()
-        val updatedAttempts = currentAttempts.filter { it.id != attemptId }
+        val updatedAttempts = currentAttempts.map { attempt ->
+            if (attempt.id == attemptId) {
+                attempt.copy(
+                    flowRate = 0.0,
+                    concentration = 0.0,
+                    testTime = 0.0,
+                    actualAmount = 0.0
+                )
+            } else {
+                attempt
+            }
+        }
         _testAttempts.update { currentMap ->
             currentMap + (reagent to updatedAttempts)
         }
-        // Если удалили выбранный тест, сбрасываем _selectedAttempt
+
+        if (attemptId == _selectedAttemptId.value) {
+            _selectedAttempt.value = updatedAttempts.find { it.id == attemptId }
+        }
+    }
+
+
+    // Удаление теста
+    fun removeTestAttempt(reagent: String, attemptId: Int) {
+        val currentAttempts = _testAttempts.value[reagent] ?: emptyList()
+        val updatedAttempts = currentAttempts
+            .filter { it.id != attemptId } // Удаляем тест с указанным ID
+            .mapIndexed { index, attempt ->
+                attempt.copy(id = index + 1) // Перенумеровываем оставшиеся тесты
+            }
+
+        _testAttempts.update { currentMap ->
+            currentMap + (reagent to updatedAttempts)
+        }
+
+        // Если удалили выбранный тест, сбрасываем _selectedAttempt на первый тест
         if (attemptId == _selectedAttemptId.value) {
             _selectedAttemptId.value = updatedAttempts.firstOrNull()?.id
             _selectedAttempt.value = updatedAttempts.firstOrNull()
         }
     }
 
-    // Выбор теста для редактирования
     fun selectAttempt(attemptId: Int) {
         _selectedAttemptId.value = attemptId
-        // Находим выбранный тест в списке и обновляем _selectedAttempt
         val selectedReagent = _selectedReagentForTable.value
         val attempts = _testAttempts.value[selectedReagent] ?: emptyList()
         _selectedAttempt.value = attempts.find { it.id == attemptId }
