@@ -15,21 +15,16 @@ import org.apache.poi.xwpf.usermodel.*
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream
-import android.net.Uri
-import android.os.Environment
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import org.apache.commons.imaging.ImageInfo
 import org.apache.commons.imaging.Imaging
-import org.apache.commons.imaging.common.bytesource.ByteSourceInputStream
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STVerticalJc
 import java.io.ByteArrayOutputStream
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 
 fun shareReport(file: File, context: Context) {
@@ -53,13 +48,12 @@ fun shareReport(file: File, context: Context) {
 
 
 
-fun generateReport(
+fun generateReportBlender(
     customer: Customer,
     field: Field,
     layer: Layer,
     well: Well,
-    reagents: List<Reagent>,
-    attempts: List<TestAttempt>,
+    testAttemptsMap: Map<String, List<TestAttempt>>,
     photos: List<Photo>,
     signatureBitmap: ImageBitmap, // Все фотографии
     context: Context
@@ -203,15 +197,15 @@ fun generateReport(
 
 
 
-    // Добавляем таблицу с результатами тестов
     val dataTable = document.createTable()
     dataTable.setWidth("100%")
 
-    // Заголовки таблицы с данными
+
     val headerRow = dataTable.getRow(0)
     headerRow.getCell(0).setText("№")
     headerRow.addNewTableCell().setText("Хим. реагент")
     headerRow.addNewTableCell().setText("Насос")
+    headerRow.addNewTableCell().setText("Номер теста")
     headerRow.addNewTableCell().setText("Расход, м3/мин")
     headerRow.addNewTableCell().setText("Концентрация, л(кг)/м3")
     headerRow.addNewTableCell().setText("Время теста, мин")
@@ -219,29 +213,88 @@ fun generateReport(
     headerRow.addNewTableCell().setText("Факт, л (кг)")
     headerRow.addNewTableCell().setText("Отклонение, %")
 
-    // Заполняем таблицу данными
-    attempts.forEachIndexed { index, attempt ->
-        val row = dataTable.createRow()
-        row.getCell(0).setText((index + 1).toString())
-        row.getCell(1).setText(reagents.firstOrNull { it.id == attempt.reagentId }?.name ?: "Неизвестно")
-        row.getCell(2).setText("Основной")
-        row.getCell(3).setText(attempt.flowRate.toString())
-        row.getCell(4).setText(attempt.concentration.toString())
-        row.getCell(5).setText(attempt.testTime.toString())
-        row.getCell(6).setText((attempt.flowRate * attempt.concentration * attempt.testTime).toString())
-        row.getCell(7).setText(attempt.actualAmount.toString())
-        row.getCell(8).setText(
-            ((attempt.actualAmount - (attempt.flowRate * attempt.concentration * attempt.testTime)) /
-                    (attempt.flowRate * attempt.concentration * attempt.testTime) * 100
-                    ).toString())
+
+    for (i in 0 until headerRow.tableCells.size) {
+        val cell = headerRow.getCell(i)
+        cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER) // Центрируем текст по вертикали
+        cell.setColor("FFFF99")
+
+
+        for (paragraph in cell.paragraphs) {
+            for (run in paragraph.runs) {
+                run.fontFamily = "Times New Roman"
+                run.fontSize = 12
+                run.isBold = true
+            }
+        }
     }
-    // Преобразуем ImageBitmap в массив байтов
+
+    var rowCounter = 1
+    var mainRowCounter = 1
+    var subRowCounter = 1
+
+
+    testAttemptsMap.forEach { (reagentName, attempts) ->
+        val startRowIndex = rowCounter
+
+        attempts.forEachIndexed { testIndex, attempt ->
+            val row = dataTable.createRow()
+            row.getCell(0).setText(mainRowCounter.toString())
+            row.getCell(1).setText(reagentName)
+            row.getCell(2).setText("Осн.") //
+            row.getCell(3).setText((subRowCounter).toString())
+            row.getCell(4).setText(attempt.flowRate.toString())
+            row.getCell(5).setText(attempt.concentration.toString())
+            row.getCell(6).setText(attempt.testTime.toString())
+            row.getCell(7).setText((attempt.flowRate * attempt.concentration * attempt.testTime).toString())
+            row.getCell(8).setText(attempt.actualAmount.toString())
+            row.getCell(9).setText(
+                ((attempt.actualAmount - (attempt.flowRate * attempt.concentration * attempt.testTime)) /
+                        (attempt.flowRate * attempt.concentration * attempt.testTime) * 100
+                        ).toString() // Отклонение
+            )
+
+            // Настраиваем стиль для текста в ячейках
+            for (i in 0 until row.tableCells.size) {
+                val cell = row.getCell(i)
+                cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER) // Центрируем текст по вертикали
+
+                for (paragraph in cell.paragraphs) {
+                    for (run in paragraph.runs) {
+                        run.fontFamily = "Times New Roman"
+                        run.fontSize = 12
+                        if (i == 0 || i == 1 || i == 2) { // Жирный шрифт для номеров, реагентов и насосов
+                            run.isBold = true
+                        }
+                    }
+                }
+            }
+
+            rowCounter++
+            subRowCounter++
+        }
+
+        // Объединяем ячейки для столбцов "№", "Хим. реагент" и "Насос"
+        val endRowIndex = rowCounter - 1 // Конечная строка для текущего реагента
+        for (rowIndex in startRowIndex until endRowIndex) {
+            for (colIndex in 0..2) { // Объединяем первые три столбца
+                val cell = dataTable.getRow(startRowIndex).getCell(colIndex)
+                val cellToMerge = dataTable.getRow(rowIndex + 1).getCell(colIndex)
+
+                // Устанавливаем вертикальное объединение
+                cell.ctTc.addNewTcPr().addNewVMerge().setVal(STMerge.RESTART)
+                cellToMerge.ctTc.addNewTcPr().addNewVMerge().setVal(STMerge.CONTINUE)
+            }
+        }
+        mainRowCounter++
+        subRowCounter = 1
+    }
+
     val byteArrayOutputStream = ByteArrayOutputStream()
     signatureBitmap.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
     val signatureBytes = byteArrayOutputStream.toByteArray()
 
     val sharedPreferences = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
-    // Добавляем строку с должностью, подписью и ФИО
     val footerParagraph = document.createParagraph()
     footerParagraph.alignment = ParagraphAlignment.BOTH
 
@@ -297,4 +350,33 @@ fun getImageDimensions(imageBytes: ByteArray): Pair<Int, Int> {
     val inputStream = ByteArrayInputStream(imageBytes)
     val imageInfo = Imaging.getImageInfo(inputStream, null)
     return Pair(imageInfo.width, imageInfo.height)
+}
+
+// Расширение для применения стиля к ячейке
+fun XWPFTableCell.setText(text: String, style: XWPFStyle? = null): XWPFTableCell {
+    this.removeParagraph(0) // Удаляем существующий параграф
+    val paragraph = this.addParagraph()
+    val run = paragraph.createRun()
+    run.setText(text)
+    style?.let { run.setStyle(it.styleId) }
+    return this
+}
+
+// Расширение для применения стиля к ячейке
+fun XWPFTableCell.applyStyle(style: XWPFStyle): XWPFTableCell {
+    this.paragraphs.forEach { paragraph ->
+        paragraph.runs.forEach { run ->
+            run.setStyle(style.styleId)
+        }
+    }
+    return this
+}
+
+// Расширение для центрирования текста в ячейке
+fun XWPFTableCell.centerText(): XWPFTableCell {
+    this.paragraphs.forEach { paragraph ->
+        paragraph.alignment = ParagraphAlignment.CENTER // Горизонтальное выравнивание по центру
+    }
+    this.ctTc.addNewTcPr().addNewVAlign().setVal(STVerticalJc.CENTER) // Вертикальное выравнивание по центру
+    return this
 }

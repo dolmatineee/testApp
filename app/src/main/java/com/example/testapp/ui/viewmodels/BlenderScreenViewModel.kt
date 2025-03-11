@@ -80,6 +80,8 @@ class BlenderScreenViewModel @Inject constructor(
     private val _selectedAttempt = MutableStateFlow<TestAttempt?>(null)
     val selectedAttempt: StateFlow<TestAttempt?> get() = _selectedAttempt
 
+
+
     private val _photosForReagents = MutableStateFlow<Map<String, List<Photo>>>(emptyMap())
     val photosForReagents: StateFlow<Map<String, List<Photo>>> get() = _photosForReagents
 
@@ -87,14 +89,15 @@ class BlenderScreenViewModel @Inject constructor(
     private fun createNewTestAttempt(reagent: String): TestAttempt {
         val currentAttempts = _testAttempts.value[reagent] ?: emptyList()
         return TestAttempt(
-            id = (currentAttempts.maxOfOrNull { it.id } ?: 0) + 1, // Автоинкремент ID
-            reagentId = 0, // Замените на реальный ID реагента
+            id = (currentAttempts.maxOfOrNull { it.id } ?: 0) + 1,
+            reagentId = 0,
             flowRate = 0.0,
             concentration = 0.0,
             testTime = 0.0,
             actualAmount = 0.0
         )
     }
+
 
 
     fun selectReagent(reagent: String) {
@@ -157,9 +160,9 @@ class BlenderScreenViewModel @Inject constructor(
     fun removeTestAttempt(reagent: String, attemptId: Int) {
         val currentAttempts = _testAttempts.value[reagent] ?: emptyList()
         val updatedAttempts = currentAttempts
-            .filter { it.id != attemptId } // Удаляем тест с указанным ID
+            .filter { it.id != attemptId }
             .mapIndexed { index, attempt ->
-                attempt.copy(id = index + 1) // Перенумеровываем оставшиеся тесты
+                attempt.copy(id = index + 1)
             }
 
         _testAttempts.update { currentMap ->

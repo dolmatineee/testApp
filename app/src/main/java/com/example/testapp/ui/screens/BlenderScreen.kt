@@ -2,18 +2,13 @@ package com.example.testapp.ui.screens
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Environment
-import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -41,27 +36,18 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Clear
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -74,7 +60,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
@@ -92,15 +77,12 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberImagePainter
-import com.example.testapp.domain.models.Customer
-import com.example.testapp.domain.models.Layer
 import com.example.testapp.domain.models.Photo
-import com.example.testapp.domain.models.Reagent
 import com.example.testapp.domain.models.TestAttempt
 import com.example.testapp.ui.customs.CustomDropdownMenu
 import com.example.testapp.ui.customs.CustomTextField
 import com.example.testapp.ui.viewmodels.BlenderScreenViewModel
-import com.example.testapp.utils.generateReport
+import com.example.testapp.utils.generateReportBlender
 import com.example.testapp.utils.shareReport
 import com.example.testapp.utils.toImageBitmap
 import java.io.File
@@ -527,14 +509,13 @@ fun BlenderScreen(
                 Button(
                     onClick = {
                         if (selectedField != null && selectedWell != null && selectedLayer != null && selectedCustomer != null) {
-                            val reportFile = generateReport(
+                            val reportFile = generateReportBlender(
                                 context = context,
                                 customer = selectedCustomer!!, // Замените на реальные данные
                                 field = selectedField!!,
                                 layer = selectedLayer!!, // Замените на реальные данные
                                 well = selectedWell!!,
-                                reagents = emptyList(),
-                                attempts = emptyList(),
+                                testAttemptsMap = testAttempts,
                                 photos = photosForReagents.flatMap { it.value },
                                 signatureBitmap = signatureBitmap.value!!
                             )
