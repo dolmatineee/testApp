@@ -4,7 +4,11 @@ import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Employee
 import com.example.testapp.domain.models.Field
 import com.example.testapp.domain.models.Layer
+import com.example.testapp.domain.models.Reagent
+import com.example.testapp.domain.models.Report
+import com.example.testapp.domain.models.TestAttempt
 import com.example.testapp.domain.models.Well
+import java.io.File
 
 interface FieldRepository {
     suspend fun getFields(): List<Field>
@@ -24,4 +28,15 @@ interface CustomerRepository {
 
 interface EmployeeRepository {
     suspend fun login(phoneNumber: String, password: String): Employee?
+}
+
+interface ReagentRepository {
+    suspend fun getLayers(): List<Layer>
+}
+
+
+interface ReportBlenderRepository {
+    suspend fun insertReportBlender(
+       report: Report
+    ): Boolean
 }

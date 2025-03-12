@@ -48,6 +48,33 @@ data class Reagent(
     val name: String
 )
 
+data class Report(
+    val id: Int,
+    val employeeId: Int,
+    val fieldId: Int,
+    val wellId: Int,
+    val layerId: Int,
+    val customerId: Int,
+    val fileUrl: String,
+    val createdAt: String?,
+    val reportName: String
+)
+
+data class ReportReagentLink(
+    val reportId: Int,
+    val reagentId: Int
+)
+
+data class ReportTestDetail(
+    val id: Int,
+    val reportId: Int,
+    val reagentId: Int,
+    val flowRate: Double,
+    val concentration: Double,
+    val testTime: Double,
+    val actualAmount: Double
+)
+
 data class TestAttempt(
     val id: Int,
     val reagentId: Int,

@@ -1,25 +1,33 @@
 package com.example.testapp.remote.repositories
 
 import android.util.Log
+import com.example.testapp.BuildConfig
 import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Employee
 import com.example.testapp.domain.models.Field
 import com.example.testapp.domain.models.Layer
+import com.example.testapp.domain.models.Reagent
+import com.example.testapp.domain.models.Report
+import com.example.testapp.domain.models.TestAttempt
 import com.example.testapp.domain.models.Well
 import com.example.testapp.domain.repositories.CustomerRepository
 import com.example.testapp.domain.repositories.EmployeeRepository
 import com.example.testapp.domain.repositories.FieldRepository
 import com.example.testapp.domain.repositories.LayerRepository
+import com.example.testapp.domain.repositories.ReportBlenderRepository
 import com.example.testapp.domain.repositories.WellRepository
 import com.example.testapp.remote.models.CustomerDto
 import com.example.testapp.remote.models.EmployeeDto
 import com.example.testapp.remote.models.FieldDto
 import com.example.testapp.remote.models.LayerDto
+import com.example.testapp.remote.models.ReportDto
 import com.example.testapp.remote.models.WellDto
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.storage.Storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 
 class FieldRepositoryImpl @Inject constructor(
@@ -105,3 +113,22 @@ class EmployeeRepositoryImpl @Inject constructor(
         }
     }
 }
+
+class ReportBlenderRepositoryImpl @Inject constructor(
+    private val postgrest: Postgrest,
+    private val storage: Storage,
+) : ReportBlenderRepository {
+    override suspend fun insertReportBlender(
+        report: Report
+    ): Boolean {
+        return try {
+            true
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+
+}
+
+private fun buildImageUrl(fileName: String) =
+    "${BuildConfig.SUPABASE_URL}/storage/v1/object/public/${fileName}"

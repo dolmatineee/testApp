@@ -352,31 +352,3 @@ fun getImageDimensions(imageBytes: ByteArray): Pair<Int, Int> {
     return Pair(imageInfo.width, imageInfo.height)
 }
 
-// Расширение для применения стиля к ячейке
-fun XWPFTableCell.setText(text: String, style: XWPFStyle? = null): XWPFTableCell {
-    this.removeParagraph(0) // Удаляем существующий параграф
-    val paragraph = this.addParagraph()
-    val run = paragraph.createRun()
-    run.setText(text)
-    style?.let { run.setStyle(it.styleId) }
-    return this
-}
-
-// Расширение для применения стиля к ячейке
-fun XWPFTableCell.applyStyle(style: XWPFStyle): XWPFTableCell {
-    this.paragraphs.forEach { paragraph ->
-        paragraph.runs.forEach { run ->
-            run.setStyle(style.styleId)
-        }
-    }
-    return this
-}
-
-// Расширение для центрирования текста в ячейке
-fun XWPFTableCell.centerText(): XWPFTableCell {
-    this.paragraphs.forEach { paragraph ->
-        paragraph.alignment = ParagraphAlignment.CENTER // Горизонтальное выравнивание по центру
-    }
-    this.ctTc.addNewTcPr().addNewVAlign().setVal(STVerticalJc.CENTER) // Вертикальное выравнивание по центру
-    return this
-}
