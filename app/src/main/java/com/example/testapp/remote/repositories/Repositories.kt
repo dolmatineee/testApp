@@ -1,7 +1,7 @@
 package com.example.testapp.remote.repositories
 
 import android.util.Log
-import com.example.testapp.BuildConfig
+
 import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Employee
 import com.example.testapp.domain.models.Field
@@ -15,6 +15,7 @@ import com.example.testapp.domain.repositories.EmployeeRepository
 import com.example.testapp.domain.repositories.FieldRepository
 import com.example.testapp.domain.repositories.LayerRepository
 import com.example.testapp.domain.repositories.ReportBlenderRepository
+import com.example.testapp.domain.repositories.ReportRepository
 import com.example.testapp.domain.repositories.WellRepository
 import com.example.testapp.remote.models.CustomerDto
 import com.example.testapp.remote.models.EmployeeDto
@@ -116,6 +117,20 @@ class EmployeeRepositoryImpl @Inject constructor(
             employeeDtoList.firstOrNull()?.toDomain()
         }
     }
+
+    override suspend fun getEmployeeIdByPhone(phoneNumber: String): Int? {
+        return withContext(Dispatchers.IO) {
+            val employee = postgrest.from("employees")
+                .select {
+                    filter {
+                        eq("phone_number", phoneNumber)
+                    }
+                }.decodeSingle<EmployeeDto>()
+            val employeeId = employee.id
+
+            employeeId
+        }
+    }
 }
 
 class ReportBlenderRepositoryImpl @Inject constructor(
@@ -135,7 +150,7 @@ class ReportBlenderRepositoryImpl @Inject constructor(
                 .publicUrl(fileName)
 
             val reportDto = ReportDto(
-                employeeId = report.employeeId + 1,
+                employeeId = report.employeeId,
                 fieldId = report.fieldId,
                 wellId = report.wellId,
                 layerId = report.layerId,
@@ -197,6 +212,28 @@ class ReportBlenderRepositoryImpl @Inject constructor(
                 }.decodeSingleOrNull<ReagentDto>()
             reagent?.id
         }
+    }
+
+}
+
+class ReportRepositoryImpl @Inject constructor(
+    private val postgrest: Postgrest,
+    private val storage: Storage,
+) : ReportRepository {
+
+    override suspend fun getReports(employeeId: Int): List<Report>? {
+        return withContext(Dispatchers.IO) {
+            val reportsDto = postgrest.from("reports")
+                .select {
+                    filter {
+                        eq("employee_id", employeeId)
+                    }
+                }
+                .decodeList<ReportDto>()
+            Log.e("ReportRepositoryImpl", reportsDto.toString())
+            reportsDto.map { it.toDomain() }
+        }
+
     }
 
 }

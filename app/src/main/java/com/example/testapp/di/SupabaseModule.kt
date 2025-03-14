@@ -1,5 +1,6 @@
 package com.example.testapp.di
 
+
 import com.example.testapp.BuildConfig
 import dagger.Module
 import dagger.Provides
@@ -56,5 +57,4 @@ object SupabaseModule {
     fun provideSupabaseStorage(client: SupabaseClient): Storage {
         return client.storage
     }
-
 }

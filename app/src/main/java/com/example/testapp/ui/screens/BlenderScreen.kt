@@ -130,9 +130,8 @@ fun BlenderScreen(
     val signatureBase64 = viewModel.getSignature()
     val signatureBitmap = remember { mutableStateOf<ImageBitmap?>(null) }
 
-    val sharedPreferences =
-        LocalContext.current.getSharedPreferences("position", Context.MODE_PRIVATE)
-    val employeeId = sharedPreferences.getInt("position", 0)
+    val sharedPreferences = LocalContext.current.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+    val employeeId = sharedPreferences.getInt("employeeId", 0)
 
     LaunchedEffect(signatureBase64) {
         if (signatureBase64 != null) {

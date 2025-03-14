@@ -19,9 +19,11 @@ class LoginScreenViewModel @Inject constructor(
         viewModelScope.launch {
             val employee = loginEmployee(phoneNumber, password)
             if (employee != null) {
+                val employeeId = loginEmployee.invoke(phoneNumber)
                 sharedPreferences.edit {
                     putString("fullName", employee.fullName)
                     putString("position", employee.position)
+                    putInt("employeeId", employeeId!!)
                     putBoolean("isLoggedIn", true)
                 }
                 onResult(true)

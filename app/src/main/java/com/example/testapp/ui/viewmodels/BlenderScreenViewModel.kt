@@ -20,6 +20,7 @@ import com.example.testapp.domain.usecases.GetFields
 import com.example.testapp.domain.usecases.GetLayers
 import com.example.testapp.domain.usecases.GetWells
 import com.example.testapp.domain.usecases.InsertBlenderReport
+import com.example.testapp.domain.usecases.LoginEmployee
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +39,7 @@ class BlenderScreenViewModel @Inject constructor(
     private val getWells: GetWells,
     private val getLayers: GetLayers,
     private val getCustomers: GetCustomers,
+    private val loginEmployee: LoginEmployee,
     private val insertBlenderReport: InsertBlenderReport,
     private val updateBlenderReport: InsertBlenderReport,
     private val getReagentIdByName: InsertBlenderReport,
@@ -73,6 +75,9 @@ class BlenderScreenViewModel @Inject constructor(
 
     private val _wellError = MutableStateFlow(false)
     val wellError: StateFlow<Boolean> = _wellError
+
+    private val _employeeId = MutableStateFlow<Int?>(null)
+    val employeeId: StateFlow<Int?> = _employeeId
 
     private val _reagents = listOf("ТТ ВС марка 1", "ТТ АВ", "ТТ ВА марка АР")
     val reagents: List<String> get() = _reagents

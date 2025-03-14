@@ -13,6 +13,7 @@ import com.example.testapp.remote.repositories.EmployeeRepositoryImpl
 import com.example.testapp.remote.repositories.FieldRepositoryImpl
 import com.example.testapp.remote.repositories.LayerRepositoryImpl
 import com.example.testapp.remote.repositories.ReportBlenderRepositoryImpl
+import com.example.testapp.remote.repositories.ReportRepositoryImpl
 import com.example.testapp.remote.repositories.WellRepositoryImpl
 import java.io.File
 import javax.inject.Inject
@@ -57,6 +58,10 @@ class LoginEmployee @Inject constructor(
     suspend operator fun invoke(phoneNumber: String, password: String): Employee? {
         return employeeRepositoryImpl.login(phoneNumber, password)
     }
+
+    suspend operator fun invoke(phoneNumber: String): Int? {
+        return employeeRepositoryImpl.getEmployeeIdByPhone(phoneNumber)
+    }
 }
 
 class InsertBlenderReport @Inject constructor(
@@ -72,5 +77,13 @@ class InsertBlenderReport @Inject constructor(
 
     suspend operator fun invoke(reagentName: String): Int? {
         return blenderRepositoryImpl.getReagentIdByName(reagentName)
+    }
+}
+
+class GetReports (
+    private val reportRepositoryImpl: ReportRepositoryImpl
+) {
+    suspend operator fun invoke(employeeId: Int): List<Report>? {
+        return reportRepositoryImpl.getReports(employeeId)
     }
 }

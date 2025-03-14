@@ -28,6 +28,7 @@ interface CustomerRepository {
 
 interface EmployeeRepository {
     suspend fun login(phoneNumber: String, password: String): Employee?
+    suspend fun getEmployeeIdByPhone(phoneNumber: String): Int?
 }
 
 interface ReagentRepository {
@@ -49,4 +50,8 @@ interface ReportBlenderRepository {
     suspend fun getReagentIdByName(
         reagentName: String
     ): Int?
+}
+
+interface ReportRepository {
+    suspend fun getReports(employeeId: Int): List<Report>?
 }

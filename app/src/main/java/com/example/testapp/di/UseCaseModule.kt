@@ -5,6 +5,7 @@ import com.example.testapp.domain.repositories.FieldRepository
 import com.example.testapp.domain.usecases.GetCustomers
 import com.example.testapp.domain.usecases.GetFields
 import com.example.testapp.domain.usecases.GetLayers
+import com.example.testapp.domain.usecases.GetReports
 import com.example.testapp.domain.usecases.GetWells
 import com.example.testapp.domain.usecases.InsertBlenderReport
 import com.example.testapp.domain.usecases.LoginEmployee
@@ -13,6 +14,7 @@ import com.example.testapp.remote.repositories.EmployeeRepositoryImpl
 import com.example.testapp.remote.repositories.FieldRepositoryImpl
 import com.example.testapp.remote.repositories.LayerRepositoryImpl
 import com.example.testapp.remote.repositories.ReportBlenderRepositoryImpl
+import com.example.testapp.remote.repositories.ReportRepositoryImpl
 import com.example.testapp.remote.repositories.WellRepositoryImpl
 import dagger.Module
 import dagger.Provides
@@ -70,5 +72,13 @@ object UseCaseModule {
         reportBlenderRepositoryImpl: ReportBlenderRepositoryImpl
     ): InsertBlenderReport {
         return InsertBlenderReport(reportBlenderRepositoryImpl)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetReport(
+        reportRepositoryImpl: ReportRepositoryImpl
+    ): GetReports {
+        return GetReports(reportRepositoryImpl)
     }
 }
