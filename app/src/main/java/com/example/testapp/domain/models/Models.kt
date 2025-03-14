@@ -43,30 +43,34 @@ data class Employee(
     val position: String
 )
 
-data class Reagent(
-    val id: Int,
-    val name: String
-)
+
 
 data class Report(
-    val id: Int,
+    val id: Int? = null,
     val employeeId: Int,
     val fieldId: Int,
     val wellId: Int,
     val layerId: Int,
     val customerId: Int,
-    val fileUrl: String,
+    val fileUrl: String? = null,
     val createdAt: String?,
-    val reportName: String
+    val reportName: String,
+    val reagents: List<Reagent>
+)
+
+data class Reagent(
+    val id: Int,
+    val name: String,
+    val tests: List<ReportTestDetail>
 )
 
 data class ReportReagentLink(
-    val reportId: Int,
+    val reportId: Int? = null,
     val reagentId: Int
 )
 
 data class ReportTestDetail(
-    val id: Int,
+    val id: Int? = null,
     val reportId: Int,
     val reagentId: Int,
     val flowRate: Double,

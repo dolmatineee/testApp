@@ -11,19 +11,25 @@ import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Field
 import com.example.testapp.domain.models.Layer
 import com.example.testapp.domain.models.Photo
+import com.example.testapp.domain.models.Reagent
+import com.example.testapp.domain.models.Report
 import com.example.testapp.domain.models.TestAttempt
 import com.example.testapp.domain.models.Well
 import com.example.testapp.domain.usecases.GetCustomers
 import com.example.testapp.domain.usecases.GetFields
 import com.example.testapp.domain.usecases.GetLayers
 import com.example.testapp.domain.usecases.GetWells
+import com.example.testapp.domain.usecases.InsertBlenderReport
 
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
@@ -32,6 +38,9 @@ class BlenderScreenViewModel @Inject constructor(
     private val getWells: GetWells,
     private val getLayers: GetLayers,
     private val getCustomers: GetCustomers,
+    private val insertBlenderReport: InsertBlenderReport,
+    private val updateBlenderReport: InsertBlenderReport,
+    private val getReagentIdByName: InsertBlenderReport,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
@@ -81,9 +90,40 @@ class BlenderScreenViewModel @Inject constructor(
     val selectedAttempt: StateFlow<TestAttempt?> get() = _selectedAttempt
 
 
-
     private val _photosForReagents = MutableStateFlow<Map<String, List<Photo>>>(emptyMap())
     val photosForReagents: StateFlow<Map<String, List<Photo>>> get() = _photosForReagents
+
+
+
+    suspend fun saveReportAndGetId(report: Report, file: File): Int? {
+        return withContext(Dispatchers.IO) {
+            try {
+                insertBlenderReport.invoke(report, file)
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    suspend fun updateReportWithReagents(reportId: Int, reagents: List<Reagent>): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                updateBlenderReport.invoke(reportId, reagents)
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
+
+    suspend fun getReagentIdByName(reagentName: String): Int? {
+        return withContext(Dispatchers.IO) {
+            try {
+                getReagentIdByName.invoke(reagentName)
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
 
     // Создание нового теста
     private fun createNewTestAttempt(reagent: String): TestAttempt {
@@ -114,7 +154,6 @@ class BlenderScreenViewModel @Inject constructor(
         _testAttempts.update { currentMap ->
             currentMap + (reagent to ((currentMap[reagent] ?: emptyList()) + newAttempt))
         }
-        // Устанавливаем новый тест как выбранный
         _selectedAttemptId.value = newAttempt.id
         _selectedAttempt.value = newAttempt
     }
@@ -252,4 +291,6 @@ class BlenderScreenViewModel @Inject constructor(
     fun getSignature(): String? {
         return sharedPreferences.getString("signature", null)
     }
+
+
 }

@@ -20,13 +20,17 @@ import com.example.testapp.remote.models.CustomerDto
 import com.example.testapp.remote.models.EmployeeDto
 import com.example.testapp.remote.models.FieldDto
 import com.example.testapp.remote.models.LayerDto
+import com.example.testapp.remote.models.ReagentDto
 import com.example.testapp.remote.models.ReportDto
+import com.example.testapp.remote.models.ReportReagentLinkDto
+import com.example.testapp.remote.models.ReportTestDetailDto
 import com.example.testapp.remote.models.WellDto
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.storage.Storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import java.io.File
 import javax.inject.Inject
 
@@ -119,16 +123,82 @@ class ReportBlenderRepositoryImpl @Inject constructor(
     private val storage: Storage,
 ) : ReportBlenderRepository {
     override suspend fun insertReportBlender(
-        report: Report
-    ): Boolean {
-        return try {
+        report: Report,
+        file: File
+    ): Int? {
+        return withContext(Dispatchers.IO) {
+            val fileName = "report_${report.reportName}_${System.currentTimeMillis()}.docx"
+            storage.from("reports")
+                .upload(fileName, file.readBytes(), upsert = false)
+
+            val fileUrl = storage.from("reports")
+                .publicUrl(fileName)
+
+            val reportDto = ReportDto(
+                employeeId = report.employeeId + 1,
+                fieldId = report.fieldId,
+                wellId = report.wellId,
+                layerId = report.layerId,
+                customerId = report.customerId,
+                fileUrl = fileUrl,
+                createdAt = null,
+                reportName = report.reportName
+            )
+
+            postgrest.from("reports").insert(reportDto)
+
+            val insertedReport = postgrest.from("reports")
+                .select {
+                    filter {
+                        eq("file_url", fileUrl)
+                    }
+                }.decodeSingle<ReportDto>()
+            val reportId = insertedReport.id
+
+            reportId
+        }
+    }
+
+    override suspend fun updateReportReagents(reportId: Int, reagents: List<Reagent>): Boolean {
+        return withContext(Dispatchers.IO) {
+            Log.e("gfhgfghf", reagents.toString())
+            reagents.forEach { reagent ->
+                val reagentLinkDto = ReportReagentLinkDto(
+                    reportId = reportId,
+                    reagentId = reagent.id
+                )
+                postgrest.from("report_reagent_links")
+                    .insert(reagentLinkDto)
+
+                reagent.tests.forEach { test ->
+                    val testDetailDto = ReportTestDetailDto(
+                        reportId = reportId,
+                        reagentId = reagent.id,
+                        flowRate = test.flowRate,
+                        concentration = test.concentration,
+                        testTime = test.testTime,
+                        actualAmount = test.actualAmount
+                    )
+                    postgrest.from("report_test_details")
+                        .insert(testDetailDto)
+                }
+            }
             true
-        } catch (e: Exception) {
-            throw e
+        }
+    }
+
+    override suspend fun getReagentIdByName(reagentName: String): Int? {
+        return withContext(Dispatchers.IO) {
+            val reagent = postgrest.from("reagents")
+                .select {
+                    filter {
+                        eq("name", reagentName)
+                    }
+                }.decodeSingleOrNull<ReagentDto>()
+            reagent?.id
         }
     }
 
 }
 
-private fun buildImageUrl(fileName: String) =
-    "${BuildConfig.SUPABASE_URL}/storage/v1/object/public/${fileName}"
+

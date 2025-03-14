@@ -4,11 +4,13 @@ import com.example.testapp.domain.repositories.CustomerRepository
 import com.example.testapp.domain.repositories.EmployeeRepository
 import com.example.testapp.domain.repositories.FieldRepository
 import com.example.testapp.domain.repositories.LayerRepository
+import com.example.testapp.domain.repositories.ReportBlenderRepository
 import com.example.testapp.domain.repositories.WellRepository
 import com.example.testapp.remote.repositories.CustomerRepositoryImpl
 import com.example.testapp.remote.repositories.EmployeeRepositoryImpl
 import com.example.testapp.remote.repositories.FieldRepositoryImpl
 import com.example.testapp.remote.repositories.LayerRepositoryImpl
+import com.example.testapp.remote.repositories.ReportBlenderRepositoryImpl
 import com.example.testapp.remote.repositories.WellRepositoryImpl
 import dagger.Binds
 import dagger.Module
@@ -51,5 +53,9 @@ abstract class RepositoryModule {
         customerRepositoryImpl: CustomerRepositoryImpl
     ): CustomerRepository
 
-
+    @Binds
+    @Singleton
+    abstract fun bindReportBlenderRepository(
+        reportBlenderRepositoryImpl: ReportBlenderRepositoryImpl
+    ): ReportBlenderRepository
 }

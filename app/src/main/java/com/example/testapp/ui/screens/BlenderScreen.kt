@@ -2,6 +2,7 @@ package com.example.testapp.ui.screens
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Environment
@@ -76,8 +77,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewModelScope
 import coil.compose.rememberImagePainter
 import com.example.testapp.domain.models.Photo
+import com.example.testapp.domain.models.Reagent
+import com.example.testapp.domain.models.Report
+import com.example.testapp.domain.models.ReportTestDetail
 import com.example.testapp.domain.models.TestAttempt
 import com.example.testapp.ui.customs.CustomDropdownMenu
 import com.example.testapp.ui.customs.CustomTextField
@@ -85,6 +90,8 @@ import com.example.testapp.ui.viewmodels.BlenderScreenViewModel
 import com.example.testapp.utils.generateReportBlender
 import com.example.testapp.utils.shareReport
 import com.example.testapp.utils.toImageBitmap
+import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 import java.io.File
 
 
@@ -123,6 +130,10 @@ fun BlenderScreen(
     val signatureBase64 = viewModel.getSignature()
     val signatureBitmap = remember { mutableStateOf<ImageBitmap?>(null) }
 
+    val sharedPreferences =
+        LocalContext.current.getSharedPreferences("position", Context.MODE_PRIVATE)
+    val employeeId = sharedPreferences.getInt("position", 0)
+
     LaunchedEffect(signatureBase64) {
         if (signatureBase64 != null) {
             signatureBitmap.value = signatureBase64.toImageBitmap()
@@ -136,7 +147,6 @@ fun BlenderScreen(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri ->
             if (uri != null) {
-                // Передаем URI фотографии и имя реагента в ViewModel
                 viewModel.addPhotoForReagent(selectedReagent, uri)
             }
         }
@@ -446,7 +456,7 @@ fun BlenderScreen(
                         )
                     },
                     onAttemptSelected = { viewModel.selectAttempt(it) },
-                    onClear = {viewModel.clearTestAttempt(selectedReagentForTable, it.id)}
+                    onClear = { viewModel.clearTestAttempt(selectedReagentForTable, it.id) }
                 )
             }
 
@@ -511,17 +521,48 @@ fun BlenderScreen(
                         if (selectedField != null && selectedWell != null && selectedLayer != null && selectedCustomer != null) {
                             val reportFile = generateReportBlender(
                                 context = context,
-                                customer = selectedCustomer!!, // Замените на реальные данные
+                                customer = selectedCustomer!!,
                                 field = selectedField!!,
-                                layer = selectedLayer!!, // Замените на реальные данные
+                                layer = selectedLayer!!,
                                 well = selectedWell!!,
                                 testAttemptsMap = testAttempts,
                                 photos = photosForReagents.flatMap { it.value },
                                 signatureBitmap = signatureBitmap.value!!
                             )
-                            shareReport(reportFile, context)
+
+                            viewModel.viewModelScope.launch {
+                                // Получаем ID реагентов по их именам
+                                val reagentIds = testAttempts.keys.associateWith { reagentName ->
+                                    viewModel.getReagentIdByName(reagentName) ?: throw IllegalStateException("Reagent $reagentName not found")
+                                }
+
+                                val reportId = viewModel.saveReportAndGetId(
+                                    report = Report(
+                                        employeeId = employeeId,
+                                        fieldId = selectedField!!.id,
+                                        wellId = selectedWell!!.id,
+                                        layerId = selectedLayer!!.id,
+                                        customerId = selectedCustomer!!.id,
+                                        createdAt = toString(),
+                                        reportName = "blender",
+                                        reagents = emptyList()
+                                    ),
+                                    file = reportFile
+                                )
+                                Log.e("gfhfgh", reportId.toString())
+
+                                // Передаем reagentIds в метод convertToReagents
+                                viewModel.updateReportWithReagents(
+                                    reportId!!,
+                                    convertToReagents(
+                                        testAttempts,
+                                        reportId,
+                                        reagentIds
+                                    )
+                                )
+                            }
                         } else {
-                            // Показать ошибку, если не выбраны месторождение или скважина
+                            // Обработка случая, когда не все поля выбраны
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -803,8 +844,7 @@ fun ReagentTable(
                         } else {
                             onAttemptSelected(attempt.id)
                         }
-                              }
-                    ,
+                    },
                     onDelete = { onTestAttemptRemoved(attempt.id) }
                 )
             }
@@ -996,9 +1036,9 @@ fun TestAttemptForm(
 
     val clearAttempt = attempt.copy(
         flowRate = 0.0,
-        concentration =  0.0,
+        concentration = 0.0,
         testTime = 0.0,
-        actualAmount =  0.0
+        actualAmount = 0.0
     )
 
 
@@ -1064,6 +1104,36 @@ fun TestAttemptForm(
         ) {
             Text("Очистить")
         }
+    }
+}
+
+
+fun convertToReagents(
+    testAttemptsMap: Map<String, List<TestAttempt>>,
+    reportId: Int,
+    reagentIds: Map<String, Int> // Принимаем Map с именами реагентов и их ID
+): List<Reagent> {
+    Log.e("convertToReagents", reagentIds.toString())
+    return testAttemptsMap.map { (reagentName, testAttempts) ->
+        // Получаем reagentId из переданного Map
+        val reagentId = reagentIds[reagentName]
+            ?: throw IllegalStateException("Reagent $reagentName not found")
+
+        // Создаем объект Reagent
+        Reagent(
+            id = reagentId, // Используем reagentId из переданного Map
+            name = reagentName,
+            tests = testAttempts.map { testAttempt ->
+                ReportTestDetail(
+                    reagentId = reagentId, // Используем reagentId из переданного Map
+                    flowRate = testAttempt.flowRate,
+                    concentration = testAttempt.concentration,
+                    testTime = testAttempt.testTime,
+                    actualAmount = testAttempt.actualAmount,
+                    reportId = reportId
+                )
+            }
+        )
     }
 }
 

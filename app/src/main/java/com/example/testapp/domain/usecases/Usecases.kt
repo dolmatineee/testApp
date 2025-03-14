@@ -4,13 +4,17 @@ import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Employee
 import com.example.testapp.domain.models.Field
 import com.example.testapp.domain.models.Layer
+import com.example.testapp.domain.models.Reagent
+import com.example.testapp.domain.models.Report
 import com.example.testapp.domain.models.Well
 import com.example.testapp.domain.repositories.EmployeeRepository
 import com.example.testapp.remote.repositories.CustomerRepositoryImpl
 import com.example.testapp.remote.repositories.EmployeeRepositoryImpl
 import com.example.testapp.remote.repositories.FieldRepositoryImpl
 import com.example.testapp.remote.repositories.LayerRepositoryImpl
+import com.example.testapp.remote.repositories.ReportBlenderRepositoryImpl
 import com.example.testapp.remote.repositories.WellRepositoryImpl
+import java.io.File
 import javax.inject.Inject
 
 // GetFields.kt
@@ -52,5 +56,21 @@ class LoginEmployee @Inject constructor(
 ) {
     suspend operator fun invoke(phoneNumber: String, password: String): Employee? {
         return employeeRepositoryImpl.login(phoneNumber, password)
+    }
+}
+
+class InsertBlenderReport @Inject constructor(
+    private val blenderRepositoryImpl: ReportBlenderRepositoryImpl
+) {
+    suspend operator fun invoke(report: Report, file: File): Int? {
+        return blenderRepositoryImpl.insertReportBlender(report, file)
+    }
+
+    suspend operator fun invoke(reportsId: Int, reagents: List<Reagent>): Boolean {
+        return blenderRepositoryImpl.updateReportReagents(reportsId, reagents)
+    }
+
+    suspend operator fun invoke(reagentName: String): Int? {
+        return blenderRepositoryImpl.getReagentIdByName(reagentName)
     }
 }

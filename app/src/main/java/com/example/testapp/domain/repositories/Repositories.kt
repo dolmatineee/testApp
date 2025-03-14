@@ -37,6 +37,16 @@ interface ReagentRepository {
 
 interface ReportBlenderRepository {
     suspend fun insertReportBlender(
-       report: Report
+       report: Report,
+       file: File
+    ): Int?
+
+    suspend fun updateReportReagents(
+        reportId: Int,
+        reagents: List<Reagent>
     ): Boolean
+
+    suspend fun getReagentIdByName(
+        reagentName: String
+    ): Int?
 }

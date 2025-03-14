@@ -120,34 +120,17 @@ data class PositionDto(
 
 @Serializable
 data class ReportDto(
-    @SerialName("id")
-    val id: Int,
-
-    @SerialName("employee_id")
-    val employeeId: Int,
-
-    @SerialName("field_id")
-    val fieldId: Int,
-
-    @SerialName("well_id")
-    val wellId: Int,
-
-    @SerialName("layer_id")
-    val layerId: Int,
-
-    @SerialName("customer_id")
-    val customerId: Int,
-
-    @SerialName("file_url")
-    val fileUrl: String,
-
-    @SerialName("created_at")
-    val createdAt: String? = null, // Может быть null, если генерируется автоматически
-
-    @SerialName("report_name")
-    val reportName: String
+    @SerialName("id") val id: Int? = null,
+    @SerialName("employee_id") val employeeId: Int,
+    @SerialName("field_id") val fieldId: Int,
+    @SerialName("well_id") val wellId: Int,
+    @SerialName("layer_id") val layerId: Int,
+    @SerialName("customer_id") val customerId: Int,
+    @SerialName("file_url") val fileUrl: String,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("report_name") val reportName: String
 ) {
-    fun toDomain(): Report {
+    fun toDomain(reagents: List<Reagent> = emptyList()): Report {
         return Report(
             id = this.id,
             employeeId = this.employeeId,
@@ -157,18 +140,16 @@ data class ReportDto(
             customerId = this.customerId,
             fileUrl = this.fileUrl,
             createdAt = this.createdAt,
-            reportName = this.reportName
+            reportName = this.reportName,
+            reagents = reagents
         )
     }
 }
 
 @Serializable
 data class ReportReagentLinkDto(
-    @SerialName("report_id")
-    val reportId: Int,
-
-    @SerialName("reagent_id")
-    val reagentId: Int
+    @SerialName("report_id") val reportId: Int? = null,
+    @SerialName("reagent_id") val reagentId: Int
 ) {
     fun toDomain(): ReportReagentLink {
         return ReportReagentLink(
@@ -180,26 +161,13 @@ data class ReportReagentLinkDto(
 
 @Serializable
 data class ReportTestDetailDto(
-    @SerialName("id")
-    val id: Int,
-
-    @SerialName("report_id")
-    val reportId: Int,
-
-    @SerialName("reagent_id")
-    val reagentId: Int,
-
-    @SerialName("flow_rate")
-    val flowRate: Double,
-
-    @SerialName("concentration")
-    val concentration: Double,
-
-    @SerialName("test_time")
-    val testTime: Double,
-
-    @SerialName("actual_amount")
-    val actualAmount: Double
+    @SerialName("id") val id: Int? = null,
+    @SerialName("report_id") val reportId: Int,
+    @SerialName("reagent_id") val reagentId: Int,
+    @SerialName("flow_rate") val flowRate: Double,
+    @SerialName("concentration") val concentration: Double,
+    @SerialName("test_time") val testTime: Double,
+    @SerialName("actual_amount") val actualAmount: Double
 ) {
     fun toDomain(): ReportTestDetail {
         return ReportTestDetail(
@@ -217,15 +185,16 @@ data class ReportTestDetailDto(
 @Serializable
 data class ReagentDto(
     @SerialName("id")
-    val id: Int, // ID может быть null, если генерируется автоматически
+    val id: Int,
 
     @SerialName("name")
     val name: String
 ) {
-    fun toDomain(): Reagent {
+    fun toDomain(reagents: List<ReportTestDetail> = emptyList()): Reagent {
         return Reagent(
             id = this.id,
-            name = this.name
+            name = this.name,
+            tests = reagents
         )
     }
 }
