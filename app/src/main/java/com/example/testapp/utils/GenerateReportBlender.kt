@@ -6,7 +6,6 @@ import android.graphics.Bitmap
 import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Field
 import com.example.testapp.domain.models.Layer
-import com.example.testapp.domain.models.Reagent
 import com.example.testapp.domain.models.TestAttempt
 import com.example.testapp.domain.models.Well
 import com.example.testapp.domain.models.Photo
@@ -20,11 +19,9 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.core.content.FileProvider
 import org.apache.commons.imaging.Imaging
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STVerticalJc
 import java.io.ByteArrayOutputStream
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import kotlin.math.roundToInt
 
 
 fun shareReport(file: File, context: Context) {
@@ -48,7 +45,7 @@ fun shareReport(file: File, context: Context) {
 
 
 
-fun generateReportBlender(
+fun generateBlenderReportBlender(
     customer: Customer,
     field: Field,
     layer: Layer,

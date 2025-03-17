@@ -24,6 +24,7 @@ import com.example.testapp.domain.usecases.LoginEmployee
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,7 +40,6 @@ class BlenderScreenViewModel @Inject constructor(
     private val getWells: GetWells,
     private val getLayers: GetLayers,
     private val getCustomers: GetCustomers,
-    private val loginEmployee: LoginEmployee,
     private val insertBlenderReport: InsertBlenderReport,
     private val updateBlenderReport: InsertBlenderReport,
     private val getReagentIdByName: InsertBlenderReport,
@@ -78,6 +78,9 @@ class BlenderScreenViewModel @Inject constructor(
 
     private val _employeeId = MutableStateFlow<Int?>(null)
     val employeeId: StateFlow<Int?> = _employeeId
+
+    private val _isLoading = MutableStateFlow<Boolean>(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
 
     private val _reagents = listOf("ТТ ВС марка 1", "ТТ АВ", "ТТ ВА марка АР")
     val reagents: List<String> get() = _reagents
@@ -264,6 +267,7 @@ class BlenderScreenViewModel @Inject constructor(
 
     private fun loadData() {
         viewModelScope.launch {
+            _isLoading.value = true
             val fields = getFields()
             val wells = getWells()
             val layers = getLayers()
@@ -272,6 +276,8 @@ class BlenderScreenViewModel @Inject constructor(
             _wells.value = wells
             _layers.value = layers
             _customers.value = customers
+            delay(1000)
+            _isLoading.value = false
         }
     }
 

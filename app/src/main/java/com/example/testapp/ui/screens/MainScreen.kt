@@ -100,13 +100,24 @@ fun MainScreen(
                 )
             },
             acidScreenContent = {
-
+               /* AcidScreen(
+                    onBackPressed = {
+                        navigationState.navHostController.popBackStack()
+                    },
+                    onSignatureCardClickListener = {
+                        navigationState.navHostController.navigate(Screen.Signature.route)
+                    }
+                )*/
             },
             gelScreenContent = {
 
             },
             historyScreenContent = {
+                ReportsScreen(
+                    onFilterClickListener = {
 
+                    }
+                )
             },
             settingsScreenContent = {
 

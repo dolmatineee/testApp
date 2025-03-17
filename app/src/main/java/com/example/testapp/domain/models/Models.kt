@@ -94,3 +94,9 @@ data class Photo(
     val reagentName: String,
     val attemptNumber: Int
 )
+
+
+data class EmulsionPhoto(
+    val uri: Uri,
+    val emulsionName: String
+)
