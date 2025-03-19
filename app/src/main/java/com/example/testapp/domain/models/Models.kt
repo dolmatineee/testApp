@@ -34,6 +34,11 @@ data class Position(
     val positionName: String
 )
 
+data class Laboratorian(
+    val id: Int,
+    val fullName: String
+)
+
 // Employee.kt
 data class Employee(
     val id: Int,

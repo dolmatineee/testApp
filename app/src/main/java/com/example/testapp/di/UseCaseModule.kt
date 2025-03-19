@@ -4,6 +4,7 @@ import com.example.testapp.domain.repositories.EmployeeRepository
 import com.example.testapp.domain.repositories.FieldRepository
 import com.example.testapp.domain.usecases.GetCustomers
 import com.example.testapp.domain.usecases.GetFields
+import com.example.testapp.domain.usecases.GetLaboratorians
 import com.example.testapp.domain.usecases.GetLayers
 import com.example.testapp.domain.usecases.GetReports
 import com.example.testapp.domain.usecases.GetWells
@@ -64,6 +65,14 @@ object UseCaseModule {
         employeeRepositoryImpl: EmployeeRepositoryImpl
     ): LoginEmployee {
         return LoginEmployee(employeeRepositoryImpl)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetLaboratorians(
+        employeeRepositoryImpl: EmployeeRepositoryImpl
+    ): GetLaboratorians {
+        return GetLaboratorians(employeeRepositoryImpl)
     }
 
     @Provides

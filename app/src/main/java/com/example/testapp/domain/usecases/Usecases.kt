@@ -3,6 +3,7 @@ package com.example.testapp.domain.usecases
 import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Employee
 import com.example.testapp.domain.models.Field
+import com.example.testapp.domain.models.Laboratorian
 import com.example.testapp.domain.models.Layer
 import com.example.testapp.domain.models.Reagent
 import com.example.testapp.domain.models.Report
@@ -61,6 +62,14 @@ class LoginEmployee @Inject constructor(
 
     suspend operator fun invoke(phoneNumber: String): Int? {
         return employeeRepositoryImpl.getEmployeeIdByPhone(phoneNumber)
+    }
+}
+
+class GetLaboratorians @Inject constructor(
+    private val employeeRepositoryImpl: EmployeeRepositoryImpl
+) {
+    suspend operator fun invoke(): List<Laboratorian> {
+        return employeeRepositoryImpl.getLaboratorians()
     }
 }
 

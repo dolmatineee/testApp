@@ -3,6 +3,7 @@ package com.example.testapp.domain.repositories
 import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Employee
 import com.example.testapp.domain.models.Field
+import com.example.testapp.domain.models.Laboratorian
 import com.example.testapp.domain.models.Layer
 import com.example.testapp.domain.models.Reagent
 import com.example.testapp.domain.models.Report
@@ -29,6 +30,7 @@ interface CustomerRepository {
 interface EmployeeRepository {
     suspend fun login(phoneNumber: String, password: String): Employee?
     suspend fun getEmployeeIdByPhone(phoneNumber: String): Int?
+    suspend fun getLaboratorians(): List<Laboratorian>
 }
 
 interface ReagentRepository {

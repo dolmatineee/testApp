@@ -5,6 +5,7 @@ import android.util.Log
 import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Employee
 import com.example.testapp.domain.models.Field
+import com.example.testapp.domain.models.Laboratorian
 import com.example.testapp.domain.models.Layer
 import com.example.testapp.domain.models.Reagent
 import com.example.testapp.domain.models.Report
@@ -20,7 +21,9 @@ import com.example.testapp.domain.repositories.WellRepository
 import com.example.testapp.remote.models.CustomerDto
 import com.example.testapp.remote.models.EmployeeDto
 import com.example.testapp.remote.models.FieldDto
+import com.example.testapp.remote.models.LaboratorianDto
 import com.example.testapp.remote.models.LayerDto
+import com.example.testapp.remote.models.PositionDto
 import com.example.testapp.remote.models.ReagentDto
 import com.example.testapp.remote.models.ReportDto
 import com.example.testapp.remote.models.ReportReagentLinkDto
@@ -130,6 +133,28 @@ class EmployeeRepositoryImpl @Inject constructor(
 
             employeeId
         }
+    }
+
+    override suspend fun getLaboratorians(): List<Laboratorian> {
+
+        return withContext(Dispatchers.IO) {
+            val laboratorianPosition = postgrest.from("positions")
+                .select {
+                    filter {
+                        eq("position_name", "Лаборант ООО \"ЛРС\"")
+                    }
+                }.decodeSingle<PositionDto>()
+
+            val laboratorians = postgrest.from("employees")
+                .select {
+                    filter {
+                        eq("position_id", laboratorianPosition.id)
+                    }
+                }.decodeList<LaboratorianDto>()
+
+            laboratorians.map { it.toDomain() }
+        }
+
     }
 }
 

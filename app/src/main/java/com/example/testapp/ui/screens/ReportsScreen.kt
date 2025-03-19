@@ -141,12 +141,15 @@ fun ReportItem(report: Report) {
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(
+                    modifier = Modifier.weight(1f),
+                ) {
                     Text(
                         text = report.reportName,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground
                     )
 
@@ -154,7 +157,7 @@ fun ReportItem(report: Report) {
 
                     Text(
                         text = report.createdAt!!.substring(0, 10),
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onBackground.copy(0.5f)
                     )
                 }
@@ -243,7 +246,7 @@ fun ActionButtonForReport(
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground.copy(0.5f)
         )
     }
 }

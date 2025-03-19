@@ -3,6 +3,7 @@ package com.example.testapp.remote.models
 import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Employee
 import com.example.testapp.domain.models.Field
+import com.example.testapp.domain.models.Laboratorian
 import com.example.testapp.domain.models.Layer
 import com.example.testapp.domain.models.Reagent
 import com.example.testapp.domain.models.Report
@@ -84,6 +85,23 @@ data class CustomerDto(
     }
 }
 
+
+@Serializable
+data class LaboratorianDto(
+    @SerialName("id")
+    val id: Int,
+
+    @SerialName("full_name")
+    val fullName: String
+) {
+    fun toDomain(): Laboratorian {
+        return Laboratorian(
+            id = this.id,
+            fullName = this.fullName
+        )
+    }
+}
+
 @Serializable
 data class EmployeeDto(
     @SerialName("id")
@@ -114,6 +132,8 @@ data class EmployeeDto(
 
 @Serializable
 data class PositionDto(
+    @SerialName("id")
+    val id: Int,
     @SerialName("position_name")
     val positionName: String
 )

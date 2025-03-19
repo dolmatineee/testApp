@@ -82,7 +82,7 @@ fun MainScreen(
                         navigationState.navHostController.navigate(Screen.Blender.route)
                     },
                     onAcidReportClickListener = {
-
+                        navigationState.navHostController.navigate(Screen.Acid.route)
                     },
                     onGelReportClickListener = {
 
@@ -100,14 +100,14 @@ fun MainScreen(
                 )
             },
             acidScreenContent = {
-               /* AcidScreen(
+                AcidScreen(
                     onBackPressed = {
                         navigationState.navHostController.popBackStack()
                     },
                     onSignatureCardClickListener = {
                         navigationState.navHostController.navigate(Screen.Signature.route)
                     }
-                )*/
+                )
             },
             gelScreenContent = {
 

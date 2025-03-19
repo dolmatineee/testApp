@@ -16,15 +16,22 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -70,17 +77,19 @@ import com.example.testapp.domain.models.EmulsionPhoto
 import com.example.testapp.domain.models.Photo
 import com.example.testapp.domain.models.Report
 import com.example.testapp.ui.customs.CustomDropdownMenu
+import com.example.testapp.ui.customs.CustomTextField
 import com.example.testapp.ui.viewmodels.AcidScreenViewModel
 import com.example.testapp.ui.viewmodels.BlenderScreenViewModel
+import com.example.testapp.utils.PhotoType
 import com.example.testapp.utils.generateBlenderReportBlender
 import com.example.testapp.utils.toImageBitmap
 import kotlinx.coroutines.launch
 import java.io.File
 
 
-/*@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-@OptIn(ExperimentalMaterial3Api::class)*/
-/*@Composable
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun AcidScreen(
     viewModel: AcidScreenViewModel = hiltViewModel(),
     onBackPressed: () -> Unit,
@@ -90,21 +99,46 @@ fun AcidScreen(
     val wells by viewModel.wells.collectAsState()
     val layers by viewModel.layers.collectAsState()
     val customers by viewModel.customers.collectAsState()
+    val laboratorians by viewModel.laboratorians.collectAsState()
+
     val isLoading by viewModel.isLoading.collectAsState()
+
     val selectedField by viewModel.selectedField.collectAsState()
     val selectedWell by viewModel.selectedWell.collectAsState()
     val selectedLayer by viewModel.selectedLayer.collectAsState()
     val selectedCustomer by viewModel.selectedCustomer.collectAsState()
+    val selectedLaboratorian by viewModel.selectedLaboratorian.collectAsState()
+
+    var preparedAcid by remember { mutableStateOf("0") }
+    var concentratedAcid by remember { mutableStateOf("0") }
 
 
     var isFieldMenuExpanded by remember { mutableStateOf(false) }
     var isWellMenuExpanded by remember { mutableStateOf(false) }
     var isLayerMenuExpanded by remember { mutableStateOf(false) }
     var isCustomerMenuExpanded by remember { mutableStateOf(false) }
+    var isLaboratorianMenuExpanded by remember { mutableStateOf(false) }
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
     var selectedReagent by remember { mutableStateOf<String>("") }
 
 
+    val photo5000General by viewModel.photo5000General.collectAsState()
+    val photo5000AfterPour_25_75 by viewModel.photo5000AfterPour_25_75.collectAsState()
+    val photo5000AfterPour_50_50 by viewModel.photo5000AfterPour_50_50.collectAsState()
+    val photo5000AfterPour_75_25 by viewModel.photo5000AfterPour_75_25.collectAsState()
+    val photo5000AfterPour_spent by viewModel.photo5000AfterPour_spent.collectAsState()
+
+    val photo2000General by viewModel.photo2000General.collectAsState()
+    val photo2000AfterPour_25_75 by viewModel.photo2000AfterPour_25_75.collectAsState()
+    val photo2000AfterPour_50_50 by viewModel.photo2000AfterPour_50_50.collectAsState()
+    val photo2000AfterPour_75_25 by viewModel.photo2000AfterPour_75_25.collectAsState()
+    val photo2000AfterPour_spent by viewModel.photo2000AfterPour_spent.collectAsState()
+
+    val photoDensimeterConcentratedAcid by viewModel.photoDensimeterConcentratedAcid.collectAsState()
+    val photoDensimeterPreparedAcid by viewModel.photoDensimeterPreparedAcid.collectAsState()
+
+    var photoUriForCamera by remember { mutableStateOf<Uri?>(null) }
+    var selectedPhotoType by remember { mutableStateOf<PhotoType>(PhotoType.PHOTO_5000_GENERAL) }
     val signatureBase64 = viewModel.getSignature()
     val signatureBitmap = remember { mutableStateOf<ImageBitmap?>(null) }
 
@@ -125,7 +159,49 @@ fun AcidScreen(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri ->
             if (uri != null) {
-                viewModel.setPhotoEmulsionPhoto5000(uri)
+                when (selectedPhotoType) {
+                    PhotoType.PHOTO_5000_GENERAL -> viewModel.setPhoto5000General(uri)
+                    PhotoType.PHOTO_5000_AFTER_POUR_25_75 -> viewModel.setPhoto5000AfterPour_25_75(
+                        uri
+                    )
+
+                    PhotoType.PHOTO_5000_AFTER_POUR_50_50 -> viewModel.setPhoto5000AfterPour_50_50(
+                        uri
+                    )
+
+                    PhotoType.PHOTO_5000_AFTER_POUR_75_25 -> viewModel.setPhoto5000AfterPour_75_25(
+                        uri
+                    )
+
+                    PhotoType.PHOTO_5000_AFTER_POUR_SPENT -> viewModel.setPhoto5000AfterPour_spent(
+                        uri
+                    )
+
+                    PhotoType.PHOTO_2000_GENERAL -> viewModel.setPhoto2000General(uri)
+                    PhotoType.PHOTO_2000_AFTER_POUR_25_75 -> viewModel.setPhoto2000AfterPour_25_75(
+                        uri
+                    )
+
+                    PhotoType.PHOTO_2000_AFTER_POUR_50_50 -> viewModel.setPhoto2000AfterPour_50_50(
+                        uri
+                    )
+
+                    PhotoType.PHOTO_2000_AFTER_POUR_75_25 -> viewModel.setPhoto2000AfterPour_75_25(
+                        uri
+                    )
+
+                    PhotoType.PHOTO_2000_AFTER_POUR_SPENT -> viewModel.setPhoto2000AfterPour_spent(
+                        uri
+                    )
+
+                    PhotoType.PHOTO_DENSIMETER_PREPARED_ACID -> viewModel.setPhotoDensimeterPreparedAcid(
+                        uri
+                    )
+
+                    PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> viewModel.setPhotoDensimeterConcentratedAcid(
+                        uri
+                    )
+                }
             }
         }
     )
@@ -139,18 +215,55 @@ fun AcidScreen(
         )
     }
 
-// Переменная для хранения URI текущего файла
-    var photoUriForCamera by remember { mutableStateOf<Uri?>(null) }
 
-// Launcher для съемки фотографии
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
         onResult = { success ->
             if (success) {
-                // Получаем URI нового файла и передаем его в ViewModel с именем реагента
                 photoUriForCamera?.let { uri ->
-                    viewModel.setPhotoEmulsionPhoto5000(uri)
-                    Log.e("fghfghgh", "кайффффф")
+                    when (selectedPhotoType) {
+                        PhotoType.PHOTO_5000_GENERAL -> viewModel.setPhoto5000General(uri)
+                        PhotoType.PHOTO_5000_AFTER_POUR_25_75 -> viewModel.setPhoto5000AfterPour_25_75(
+                            uri
+                        )
+
+                        PhotoType.PHOTO_5000_AFTER_POUR_50_50 -> viewModel.setPhoto5000AfterPour_50_50(
+                            uri
+                        )
+
+                        PhotoType.PHOTO_5000_AFTER_POUR_75_25 -> viewModel.setPhoto5000AfterPour_75_25(
+                            uri
+                        )
+
+                        PhotoType.PHOTO_5000_AFTER_POUR_SPENT -> viewModel.setPhoto5000AfterPour_spent(
+                            uri
+                        )
+
+                        PhotoType.PHOTO_2000_GENERAL -> viewModel.setPhoto2000General(uri)
+                        PhotoType.PHOTO_2000_AFTER_POUR_25_75 -> viewModel.setPhoto2000AfterPour_25_75(
+                            uri
+                        )
+
+                        PhotoType.PHOTO_2000_AFTER_POUR_50_50 -> viewModel.setPhoto2000AfterPour_50_50(
+                            uri
+                        )
+
+                        PhotoType.PHOTO_2000_AFTER_POUR_75_25 -> viewModel.setPhoto2000AfterPour_75_25(
+                            uri
+                        )
+
+                        PhotoType.PHOTO_2000_AFTER_POUR_SPENT -> viewModel.setPhoto2000AfterPour_spent(
+                            uri
+                        )
+
+                        PhotoType.PHOTO_DENSIMETER_PREPARED_ACID -> viewModel.setPhotoDensimeterPreparedAcid(
+                            uri
+                        )
+
+                        PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> viewModel.setPhotoDensimeterConcentratedAcid(
+                            uri
+                        )
+                    }
                 }
             }
         }
@@ -310,6 +423,68 @@ fun AcidScreen(
             }
             item {
                 Text(
+                    text = "Лаборант",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center
+                )
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            item {
+                CustomDropdownMenu(
+                    label = "Лаборант",
+                    items = laboratorians.map { it.fullName },
+                    selectedItem = selectedLaboratorian?.fullName,
+                    isExpanded = isLaboratorianMenuExpanded,
+                    onExpandedChange = { isLaboratorianMenuExpanded = it },
+                    onItemSelected = { fullName ->
+                        viewModel.onLaboratorianSelected(laboratorians.first { it.fullName == fullName })
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    CustomTextField(
+                        value = concentratedAcid,
+                        onValueChange = { concentratedAcid = it },
+                        label = "Концентрированная %",
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    CustomTextField(
+                        value = preparedAcid,
+                        onValueChange = { preparedAcid = it },
+                        label = "Приготовленная %",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                EmulsionTestPhotoRowAcid(
+                    photoDensimeterPreparedAcid = photoDensimeterPreparedAcid,
+                    photoDensimeterConcentratedAcid = photoDensimeterConcentratedAcid,
+                    onAddPhoto = {
+
+                    },
+                    onRemovePhoto = {
+
+                    }
+                )
+            }
+            item {
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+
+            item {
+                Text(
                     text = "Фотоотчет",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -322,11 +497,176 @@ fun AcidScreen(
 
             item {
                 EmulsionTestPhotoSection(
-                    photo = TODO(),
-                    onAddPhoto = TODO(),
-                    onRemovePhoto = TODO(),
-                    modifier = TODO()
+                    photo = photo5000General,
+                    text = "Фотография теста на совместимость и распад эмульсии 5000 мг/л",
+                    onAddPhoto = {
+                        selectedPhotoType = PhotoType.PHOTO_5000_GENERAL
+                        showPhotoSourceDialog = true
+                    },
+                    onRemovePhoto = {
+                        viewModel.clearPhoto5000General()
+                    },
+                    modifier = Modifier.height(200.dp)
                 )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            item {
+                EmulsionTestPhotoGrid5000(
+                    photo5000AfterPour_25_75 = photo5000AfterPour_25_75,
+                    photo5000AfterPour_50_50 = photo5000AfterPour_50_50,
+                    photo5000AfterPour_75_25 = photo5000AfterPour_75_25,
+                    photo5000AfterPour_spent = photo5000AfterPour_spent,
+                    onAddPhoto = { photoType ->
+                        when (photoType) {
+                            PhotoType.PHOTO_5000_AFTER_POUR_25_75 -> {
+                                selectedPhotoType = PhotoType.PHOTO_5000_AFTER_POUR_25_75
+                                showPhotoSourceDialog = true
+                            }
+
+                            PhotoType.PHOTO_5000_AFTER_POUR_50_50 -> {
+                                selectedPhotoType = PhotoType.PHOTO_5000_AFTER_POUR_50_50
+                                showPhotoSourceDialog = true
+                            }
+
+                            PhotoType.PHOTO_5000_AFTER_POUR_75_25 -> {
+                                selectedPhotoType = PhotoType.PHOTO_5000_AFTER_POUR_75_25
+                                showPhotoSourceDialog = true
+                            }
+
+                            PhotoType.PHOTO_5000_AFTER_POUR_SPENT -> {
+                                selectedPhotoType = PhotoType.PHOTO_5000_AFTER_POUR_SPENT
+                                showPhotoSourceDialog = true
+                            }
+
+                            PhotoType.PHOTO_5000_GENERAL -> TODO()
+                            PhotoType.PHOTO_2000_GENERAL -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_25_75 -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_50_50 -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_75_25 -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_SPENT -> TODO()
+                            PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> TODO()
+                            PhotoType.PHOTO_DENSIMETER_PREPARED_ACID -> TODO()
+                        }
+                    },
+                    onRemovePhoto = { photoType ->
+                        when (photoType) {
+                            PhotoType.PHOTO_5000_AFTER_POUR_25_75 -> viewModel.clearPhoto5000AfterPour_25_75()
+                            PhotoType.PHOTO_5000_AFTER_POUR_50_50 -> viewModel.clearPhoto5000AfterPour_50_50()
+                            PhotoType.PHOTO_5000_AFTER_POUR_75_25 -> viewModel.clearPhoto5000AfterPour_75_25()
+                            PhotoType.PHOTO_5000_AFTER_POUR_SPENT -> viewModel.clearPhoto5000AfterPour_spent()
+                            PhotoType.PHOTO_5000_GENERAL -> TODO()
+                            PhotoType.PHOTO_2000_GENERAL -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_25_75 -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_50_50 -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_75_25 -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_SPENT -> TODO()
+                            PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> TODO()
+                            PhotoType.PHOTO_DENSIMETER_PREPARED_ACID -> TODO()
+                        }
+                    }
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            item {
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(MaterialTheme.colorScheme.surface)
+                )
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            item {
+                EmulsionTestPhotoSection(
+                    photo = photo2000General,
+                    text = "Фотография теста на совместимость и распад эмульсии 2000 мг/л",
+                    onAddPhoto = {
+                        selectedPhotoType = PhotoType.PHOTO_2000_GENERAL
+                        showPhotoSourceDialog = true
+                    },
+                    onRemovePhoto = {
+                        viewModel.clearPhoto2000General()
+                    },
+                    modifier = Modifier.height(200.dp)
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            item {
+                EmulsionTestPhotoGrid2000(
+                    photo2000AfterPour_25_75 = photo2000AfterPour_25_75,
+                    photo2000AfterPour_50_50 = photo2000AfterPour_50_50,
+                    photo2000AfterPour_75_25 = photo2000AfterPour_75_25,
+                    photo2000AfterPour_spent = photo2000AfterPour_spent,
+                    onAddPhoto = { photoType ->
+                        when (photoType) {
+                            PhotoType.PHOTO_5000_AFTER_POUR_25_75 -> TODO()
+                            PhotoType.PHOTO_5000_AFTER_POUR_50_50 -> TODO()
+                            PhotoType.PHOTO_5000_AFTER_POUR_75_25 -> TODO()
+                            PhotoType.PHOTO_5000_AFTER_POUR_SPENT -> TODO()
+                            PhotoType.PHOTO_5000_GENERAL -> TODO()
+                            PhotoType.PHOTO_2000_GENERAL -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_25_75 -> {
+                                selectedPhotoType = PhotoType.PHOTO_2000_AFTER_POUR_25_75
+                                showPhotoSourceDialog = true
+                            }
+
+                            PhotoType.PHOTO_2000_AFTER_POUR_50_50 -> {
+                                selectedPhotoType = PhotoType.PHOTO_2000_AFTER_POUR_50_50
+                                showPhotoSourceDialog = true
+                            }
+
+                            PhotoType.PHOTO_2000_AFTER_POUR_75_25 -> {
+                                selectedPhotoType = PhotoType.PHOTO_2000_AFTER_POUR_75_25
+                                showPhotoSourceDialog = true
+                            }
+
+                            PhotoType.PHOTO_2000_AFTER_POUR_SPENT -> {
+                                selectedPhotoType = PhotoType.PHOTO_2000_AFTER_POUR_SPENT
+                                showPhotoSourceDialog = true
+                            }
+
+                            PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> TODO()
+                            PhotoType.PHOTO_DENSIMETER_PREPARED_ACID -> TODO()
+                        }
+                    },
+                    onRemovePhoto = { photoType ->
+                        when (photoType) {
+                            PhotoType.PHOTO_5000_AFTER_POUR_25_75 -> TODO()
+                            PhotoType.PHOTO_5000_AFTER_POUR_50_50 -> TODO()
+                            PhotoType.PHOTO_5000_AFTER_POUR_75_25 -> TODO()
+                            PhotoType.PHOTO_5000_AFTER_POUR_SPENT -> TODO()
+                            PhotoType.PHOTO_5000_GENERAL -> TODO()
+                            PhotoType.PHOTO_2000_GENERAL -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_25_75 -> viewModel.clearPhoto2000AfterPour_25_75()
+                            PhotoType.PHOTO_2000_AFTER_POUR_50_50 -> viewModel.clearPhoto2000AfterPour_50_50()
+                            PhotoType.PHOTO_2000_AFTER_POUR_75_25 -> viewModel.clearPhoto2000AfterPour_75_25()
+                            PhotoType.PHOTO_2000_AFTER_POUR_SPENT -> viewModel.clearPhoto2000AfterPour_spent()
+                            PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> TODO()
+                            PhotoType.PHOTO_DENSIMETER_PREPARED_ACID -> TODO()
+                        }
+                    }
+                )
+            }
+
+
+
+
+            item {
+                Spacer(modifier = Modifier.height(32.dp))
             }
             item {
                 Text(
@@ -379,7 +719,7 @@ fun AcidScreen(
                 Spacer(modifier = Modifier.height(32.dp))
             }
 
-            item {
+            /*item {
 
                 Button(
                     onClick = {
@@ -440,7 +780,7 @@ fun AcidScreen(
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
-            }
+            }*/
 
             item {
                 Spacer(modifier = Modifier.height(100.dp))
@@ -556,9 +896,115 @@ fun AcidScreen(
             )
         }
 
+        if (showPhotoSourceDialog) {
+            AlertDialog(
+                shape = RoundedCornerShape(12.dp),
+                containerColor = MaterialTheme.colorScheme.background,
+                onDismissRequest = {
+                    // Закрываем диалоговое окно при нажатии вне его или на кнопку "Отмена"
+                    showPhotoSourceDialog = false
+                },
+                title = {
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = "Выберите источник фотографии",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                },
+                text = {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .aspectRatio(1f),
+                            colors = CardDefaults.cardColors(
+                                contentColor = MaterialTheme.colorScheme.primary,
+                                containerColor = MaterialTheme.colorScheme.primary.copy(0.1f)
+                            ),
+                            onClick = {
+                                galleryLauncher.launch("image/*")
+                                showPhotoSourceDialog = false
+                            }
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.baseline_insert_photo_24),
+                                    contentDescription = "Добавить фото"
+                                )
+                            }
+
+
+                        }
+
+                        Card(
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .aspectRatio(1f),
+                            colors = CardDefaults.cardColors(
+                                contentColor = MaterialTheme.colorScheme.primary,
+                                containerColor = MaterialTheme.colorScheme.primary.copy(0.1f)
+                            ),
+                            onClick = {
+                                if (ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.CAMERA
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    launchCamera()
+                                } else {
+                                    requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                }
+                                showPhotoSourceDialog = false
+                            }
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+
+                                Icon(
+                                    painter = painterResource(R.drawable.baseline_photo_camera_24),
+                                    contentDescription = "Добавить фото"
+                                )
+
+                            }
+
+
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        onClick = {
+                            // Закрываем диалоговое окно
+                            showPhotoSourceDialog = false
+                        }
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            text = "Отмена",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+            )
+        }
+
 
     }
-}*/
+}
 
 
 @Composable
@@ -566,11 +1012,11 @@ fun EmulsionTestPhotoSection(
     photo: Uri?,
     onAddPhoto: () -> Unit,
     onRemovePhoto: () -> Unit,
+    text: String,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier
-            .fillMaxWidth()
+        modifier = Modifier
             .dashedBorder(1.dp, MaterialTheme.colorScheme.primary, 8.dp)
             .padding(16.dp),
         colors = CardDefaults.cardColors(
@@ -580,26 +1026,25 @@ fun EmulsionTestPhotoSection(
         shape = RoundedCornerShape(8.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth()
         ) {
             // Отображение фотографии
             if (photo != null) {
                 EmulsionPhotoCard(
                     photo = photo,
                     onRemovePhoto = onRemovePhoto,
-                    modifier = Modifier.height(200.dp)
+                    modifier = modifier
                 )
             } else {
                 AddEmulsionPhotoCard(
                     onAddPhoto = onAddPhoto,
-                    modifier = Modifier.height(200.dp)
+                    modifier = modifier
                 )
             }
 
             // Текст под фотографией
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Фотография теста на совместимость и распад эмульсии 5000 мг/л",
+                text = text,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Start
@@ -607,6 +1052,179 @@ fun EmulsionTestPhotoSection(
         }
     }
 }
+
+@Composable
+fun EmulsionTestPhotoRowAcid(
+    photoDensimeterPreparedAcid: Uri?,
+    photoDensimeterConcentratedAcid: Uri?,
+    onAddPhoto: (PhotoType) -> Unit,
+    onRemovePhoto: (PhotoType) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        modifier = modifier
+            .fillMaxSize()
+            .heightIn(max = 1000.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(2) { index ->
+            when (index) {
+                0 -> EmulsionTestPhotoSection(
+                    photo = photoDensimeterConcentratedAcid,
+                    onAddPhoto = { onAddPhoto(PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID) },
+                    onRemovePhoto = { onRemovePhoto(PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID) },
+                    text = "Фотография плотномера при замере плотности концентрированной кислоты",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+
+                1 -> EmulsionTestPhotoSection(
+                    photo = photoDensimeterPreparedAcid,
+                    onAddPhoto = { onAddPhoto(PhotoType.PHOTO_DENSIMETER_PREPARED_ACID) },
+                    onRemovePhoto = { onRemovePhoto(PhotoType.PHOTO_DENSIMETER_PREPARED_ACID) },
+                    text = "Фотография плотномера при замере плотности приготовленной кислоты",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+            }
+        }
+    }
+}
+
+
+@Composable
+fun EmulsionTestPhotoGrid5000(
+    photo5000AfterPour_25_75: Uri?,
+    photo5000AfterPour_50_50: Uri?,
+    photo5000AfterPour_75_25: Uri?,
+    photo5000AfterPour_spent: Uri?,
+    onAddPhoto: (PhotoType) -> Unit,
+    onRemovePhoto: (PhotoType) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        modifier = modifier
+            .fillMaxSize()
+            .heightIn(max = 1000.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(4) { index ->
+            when (index) {
+                0 -> EmulsionTestPhotoSection(
+                    photo = photo5000AfterPour_25_75,
+                    onAddPhoto = { onAddPhoto(PhotoType.PHOTO_5000_AFTER_POUR_25_75) },
+                    onRemovePhoto = { onRemovePhoto(PhotoType.PHOTO_5000_AFTER_POUR_25_75) },
+                    text = "Пролив 25/75",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+
+                1 -> EmulsionTestPhotoSection(
+                    photo = photo5000AfterPour_50_50,
+                    onAddPhoto = { onAddPhoto(PhotoType.PHOTO_5000_AFTER_POUR_50_50) },
+                    onRemovePhoto = { onRemovePhoto(PhotoType.PHOTO_5000_AFTER_POUR_50_50) },
+                    text = "Пролив 50/50",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+
+                2 -> EmulsionTestPhotoSection(
+                    photo = photo5000AfterPour_75_25,
+                    onAddPhoto = { onAddPhoto(PhotoType.PHOTO_5000_AFTER_POUR_75_25) },
+                    onRemovePhoto = { onRemovePhoto(PhotoType.PHOTO_5000_AFTER_POUR_75_25) },
+                    text = "Пролив 75/25",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+
+                3 -> EmulsionTestPhotoSection(
+                    photo = photo5000AfterPour_spent,
+                    onAddPhoto = { onAddPhoto(PhotoType.PHOTO_5000_AFTER_POUR_SPENT) },
+                    onRemovePhoto = { onRemovePhoto(PhotoType.PHOTO_5000_AFTER_POUR_SPENT) },
+                    text = "Пролив отработанный",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+            }
+        }
+    }
+}
+
+
+@Composable
+fun EmulsionTestPhotoGrid2000(
+    photo2000AfterPour_25_75: Uri?,
+    photo2000AfterPour_50_50: Uri?,
+    photo2000AfterPour_75_25: Uri?,
+    photo2000AfterPour_spent: Uri?,
+    onAddPhoto: (PhotoType) -> Unit,
+    onRemovePhoto: (PhotoType) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2), // 2 колонки
+        modifier = modifier
+            .fillMaxSize()
+            .heightIn(max = 1000.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(4) { index ->
+            when (index) {
+                0 -> EmulsionTestPhotoSection(
+                    photo = photo2000AfterPour_25_75,
+                    onAddPhoto = { onAddPhoto(PhotoType.PHOTO_2000_AFTER_POUR_25_75) },
+                    onRemovePhoto = { onRemovePhoto(PhotoType.PHOTO_2000_AFTER_POUR_25_75) },
+                    text = "Пролив 25/75",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+
+                1 -> EmulsionTestPhotoSection(
+                    photo = photo2000AfterPour_50_50,
+                    onAddPhoto = { onAddPhoto(PhotoType.PHOTO_2000_AFTER_POUR_50_50) },
+                    onRemovePhoto = { onRemovePhoto(PhotoType.PHOTO_2000_AFTER_POUR_50_50) },
+                    text = "Пролив 50/50",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+
+                2 -> EmulsionTestPhotoSection(
+                    photo = photo2000AfterPour_75_25,
+                    onAddPhoto = { onAddPhoto(PhotoType.PHOTO_2000_AFTER_POUR_75_25) },
+                    onRemovePhoto = { onRemovePhoto(PhotoType.PHOTO_2000_AFTER_POUR_75_25) },
+                    text = "Пролив 75/25",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+
+                3 -> EmulsionTestPhotoSection(
+                    photo = photo2000AfterPour_spent,
+                    onAddPhoto = { onAddPhoto(PhotoType.PHOTO_2000_AFTER_POUR_SPENT) },
+                    onRemovePhoto = { onRemovePhoto(PhotoType.PHOTO_2000_AFTER_POUR_SPENT) },
+                    text = "Пролив отработанный",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+            }
+        }
+    }
+}
+
 
 @Composable
 fun AddEmulsionPhotoCard(
@@ -683,4 +1301,3 @@ fun EmulsionPhotoCard(
     }
 }
 
-*/
