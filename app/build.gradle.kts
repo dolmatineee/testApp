@@ -51,6 +51,11 @@ android {
         compose = true
         buildConfig = true
     }
+
+    configurations.all {
+        exclude(group = "xmlpull", module = "xmlpull")
+        exclude(group = "xpp3", module = "xpp3_min")
+    }
 }
 
 dependencies {
@@ -63,6 +68,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.navigation.safe.args.generator)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -71,7 +77,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
-
+    implementation ("xmlpull:xmlpull:1.1.3.4d_b4_min")
     implementation("androidx.navigation:navigation-compose:2.8.7")
     implementation("androidx.compose.runtime:runtime-livedata:1.6.8")
 
@@ -119,5 +125,9 @@ dependencies {
     implementation ("androidx.camera:camera-view:1.4.1")
 
     implementation("org.apache.commons:commons-imaging:1.0-alpha3")
+
+
+    implementation ("com.airbnb.android:lottie-compose:6.1.0")
+
 
 }

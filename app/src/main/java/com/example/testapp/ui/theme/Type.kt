@@ -19,7 +19,7 @@ val Typography = Typography(
     titleLarge = TextStyle(
         fontFamily = montserratFontFamily,
         fontWeight = FontWeight.Black,
-        fontSize = 28.sp,
+        fontSize = 24.sp,
         lineHeight = 32.sp,
         letterSpacing = 0.sp
     ),

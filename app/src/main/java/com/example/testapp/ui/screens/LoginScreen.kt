@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -48,6 +49,16 @@ fun LoginScreen(
     val isLoading = remember { mutableStateOf(false) }
     val errorMessage = remember { mutableStateOf<String?>(null) }
     val passwordVisibility = remember { mutableStateOf(false) }
+
+
+    Button(
+        onClick = {
+
+        },
+        shape = RoundedCornerShape(28.dp)
+    ) {
+
+    }
 
     Scaffold(
         topBar = {
@@ -124,9 +135,12 @@ fun LoginScreen(
                             }
                         }
                     },
-                    enabled = !isLoading.value
+                    enabled = !isLoading.value,
+                    shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Войти")
+                    Text(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        text = "Войти")
                 }
 
                 if (errorMessage.value != null) {

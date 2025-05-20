@@ -5,21 +5,28 @@ import android.content.SharedPreferences
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.testapp.domain.models.AcidReport
 import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Field
 import com.example.testapp.domain.models.Laboratorian
 import com.example.testapp.domain.models.Layer
+import com.example.testapp.domain.models.BlenderReport
 import com.example.testapp.domain.models.Well
 import com.example.testapp.domain.usecases.GetCustomers
 import com.example.testapp.domain.usecases.GetFields
 import com.example.testapp.domain.usecases.GetLaboratorians
 import com.example.testapp.domain.usecases.GetLayers
 import com.example.testapp.domain.usecases.GetWells
+import com.example.testapp.domain.usecases.InsertAcidReport
+import com.example.testapp.domain.usecases.InsertBlenderReport
+import com.example.testapp.utils.PhotoType
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -29,7 +36,8 @@ class AcidScreenViewModel @Inject constructor(
     private val getWells: GetWells,
     private val getLayers: GetLayers,
     private val getCustomers: GetCustomers,
-    private val getLaboratorians: GetLaboratorians
+    private val getLaboratorians: GetLaboratorians,
+    private val insertAcidReport: InsertAcidReport
 ) : ViewModel() {
 
     private val _fields = MutableStateFlow<List<Field>>(emptyList())
@@ -105,9 +113,11 @@ class AcidScreenViewModel @Inject constructor(
 
 
 
-
-    private val _isLoading = MutableStateFlow<Boolean>(false)
+    private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _isSuccess = MutableStateFlow(false)
+    val isSuccess: StateFlow<Boolean> = _isSuccess
 
     init {
         loadData()
@@ -253,4 +263,50 @@ class AcidScreenViewModel @Inject constructor(
     fun onLaboratorianSelected(laboratorian: Laboratorian) {
         _selectedLaboratorian.value = laboratorian
     }
+
+
+    fun resetSuccessState() {
+        _isSuccess.value = false
+    }
+
+    fun setSuccessState() {
+        _isSuccess.value = true
+    }
+
+    suspend fun saveReportAndGetId(
+        report: AcidReport,
+        acidReportCode: String
+    ): Int? {
+
+        _isLoading.value = true
+
+        val photos = mapOf(
+            PhotoType.PHOTO_5000_GENERAL to _photo5000General.value,
+            PhotoType.PHOTO_5000_AFTER_POUR_25_75 to _photo5000AfterPour_25_75.value,
+            PhotoType.PHOTO_5000_AFTER_POUR_50_50 to _photo5000AfterPour_50_50.value,
+            PhotoType.PHOTO_5000_AFTER_POUR_75_25 to _photo5000AfterPour_75_25.value,
+            PhotoType.PHOTO_5000_AFTER_POUR_SPENT to _photo5000AfterPour_spent.value,
+            PhotoType.PHOTO_2000_GENERAL to _photo2000General.value,
+            PhotoType.PHOTO_2000_AFTER_POUR_25_75 to _photo2000AfterPour_25_75.value,
+            PhotoType.PHOTO_2000_AFTER_POUR_50_50 to _photo2000AfterPour_50_50.value,
+            PhotoType.PHOTO_2000_AFTER_POUR_75_25 to _photo2000AfterPour_75_25.value,
+            PhotoType.PHOTO_2000_AFTER_POUR_SPENT to _photo2000AfterPour_spent.value,
+            PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID to _photoDensimeterConcentratedAcid.value,
+            PhotoType.PHOTO_DENSIMETER_PREPARED_ACID to _photoDensimeterPreparedAcid.value
+        ).filterValues { it != null } as Map<PhotoType, Uri>
+
+
+
+
+        val acidReportId = insertAcidReport(
+            report = report,
+            acidReportCode = acidReportCode,
+            photos = photos
+        )
+
+        _isLoading.value = false
+
+        return acidReportId
+    }
+
 }

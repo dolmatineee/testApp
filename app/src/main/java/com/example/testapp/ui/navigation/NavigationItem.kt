@@ -27,4 +27,20 @@ sealed class NavigationItem(
         screen = Screen.Settings,
         icon = Icons.Filled.Settings
     )
+
+
+    object SupervisorCurrentReports: NavigationItem(
+        screen = Screen.SupervisorCurrentReports,
+        icon = Icons.Filled.Home
+    )
+
+    object SupervisorAllReports: NavigationItem(
+        screen = Screen.SupervisorAllReports,
+        icon = Icons.Filled.Menu
+    )
+
+    object SupervisorSettings: NavigationItem(
+        screen = Screen.SupervisorSettings,
+        icon = Icons.Filled.Settings
+    )
 }

@@ -1,23 +1,16 @@
 package com.example.testapp.ui.navigation
 
 import android.content.Context
-import android.util.Base64
-import android.util.Log
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.testapp.utils.toBase64
 
 
 @Composable
 fun AppNavGraph(
+    userRole: String?,
     navHostController: NavHostController,
     typesReportsScreenContent: @Composable () -> Unit,
     blenderScreenContent: @Composable () -> Unit,
@@ -27,14 +20,38 @@ fun AppNavGraph(
     settingsScreenContent: @Composable () -> Unit,
     detailsScreenContent: @Composable () -> Unit,
     loginScreenContent: @Composable () -> Unit,
-    signatureScreenContent: @Composable () -> Unit,
+
+    fieldsScreenContent: @Composable () -> Unit,
+    wellsScreenContent: @Composable () -> Unit,
+    layersScreenContent: @Composable () -> Unit,
+    customersScreenContent: @Composable () -> Unit,
+
+
+
+
+    supervisorCurrentReportsContent: @Composable () -> Unit,
+    supervisorAllReportsContent: @Composable () -> Unit,
+    supervisorReportsFilterContent: @Composable () -> Unit,
+    supervisorSettingsContent: @Composable () -> Unit,
+    supervisorSignatureContent: @Composable () -> Unit,
 ) {
     val sharedPreferences = LocalContext.current.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
     val isLoggedIn = sharedPreferences.getBoolean("isLoggedIn", false)
 
+
     NavHost(
         navController = navHostController,
-        startDestination = if (isLoggedIn) Screen.Home.route else Screen.Login.route
+        startDestination = if (isLoggedIn) {
+            when (userRole) {
+                "Ведущий супервайзер по ГРП ООО БНД" -> Screen.SupervisorCurrentReports.route
+                "Мастер ГРП ООО ЛРС" -> Screen.Home.route
+                else -> {
+                    Screen.Login.route
+                }
+            }
+        } else {
+            Screen.Login.route
+        }
     ) {
         homeScreenNavGraph(
             typesReportsScreenContent = typesReportsScreenContent,
@@ -59,8 +76,51 @@ fun AppNavGraph(
             loginScreenContent()
         }
 
-        composable(Screen.Signature.route) {
-            signatureScreenContent()
+        composable(Screen.Fields.route) {
+            fieldsScreenContent()
         }
+
+        composable(Screen.Wells.route) {
+            wellsScreenContent()
+        }
+
+        composable(Screen.Layers.route) {
+            layersScreenContent()
+        }
+
+        composable(Screen.Customers.route) {
+            customersScreenContent()
+        }
+
+
+
+
+
+
+
+
+
+        composable(Screen.SupervisorCurrentReports.route) {
+            supervisorCurrentReportsContent()
+        }
+
+        composable(Screen.SupervisorAllReports.route) {
+            supervisorAllReportsContent()
+        }
+
+        composable(Screen.SupervisorReportsFilter.route) {
+            supervisorReportsFilterContent()
+        }
+
+        composable(Screen.SupervisorSettings.route) {
+            supervisorSettingsContent()
+        }
+
+        composable(Screen.SupervisorSignature.route) {
+            supervisorSignatureContent()
+        }
+
+
+
     }
 }

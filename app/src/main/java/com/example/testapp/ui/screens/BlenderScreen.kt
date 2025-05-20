@@ -39,10 +39,11 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Clear
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,6 +72,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -78,25 +80,36 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewModelScope
 import coil.compose.rememberImagePainter
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.testapp.R
 import com.example.testapp.domain.models.Photo
 import com.example.testapp.domain.models.Reagent
-import com.example.testapp.domain.models.Report
-import com.example.testapp.domain.models.ReportTestDetail
+import com.example.testapp.domain.models.BlenderReport
+import com.example.testapp.domain.models.BlenderReportTestDetail
 import com.example.testapp.domain.models.TestAttempt
 import com.example.testapp.ui.customs.CustomDropdownMenu
 import com.example.testapp.ui.customs.CustomTextField
 import com.example.testapp.ui.customs.shimmer
 import com.example.testapp.ui.viewmodels.BlenderScreenViewModel
-import com.example.testapp.utils.generateBlenderReportBlender
+import com.example.testapp.utils.copyToClipboard
 import com.example.testapp.utils.toImageBitmap
+import com.example.testapp.utils.transliterate
 import kotlinx.coroutines.launch
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -112,6 +125,7 @@ fun BlenderScreen(
     val layers by viewModel.layers.collectAsState()
     val customers by viewModel.customers.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isSuccess by viewModel.isSuccess.collectAsState()
     val selectedField by viewModel.selectedField.collectAsState()
     val selectedWell by viewModel.selectedWell.collectAsState()
     val selectedLayer by viewModel.selectedLayer.collectAsState()
@@ -137,6 +151,40 @@ fun BlenderScreen(
     val sharedPreferences =
         LocalContext.current.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
     val employeeId = sharedPreferences.getInt("employeeId", 0)
+
+    // Добавьте это состояние в ваш Composable
+    var showReportNameDialog by remember { mutableStateOf(false) }
+    var reportName by remember { mutableStateOf("") }
+
+    val uniqueCode = remember {
+        mutableStateOf(UUID.randomUUID().toString().take(8).uppercase())
+    }
+
+    LaunchedEffect(selectedCustomer, selectedField, selectedLayer, selectedWell) {
+        if (selectedCustomer != null && selectedField != null &&
+            selectedLayer != null && selectedWell != null
+        ) {
+
+            val safeCompanyName = transliterate(selectedCustomer!!.companyName)
+                .replace(" ", "_")
+                .replace("[^a-zA-Z0-9_]".toRegex(), "")
+
+            val safeFieldName = transliterate(selectedField!!.name)
+                .replace(" ", "_")
+                .replace("[^a-zA-Z0-9_]".toRegex(), "")
+
+            val safeLayerName = transliterate(selectedLayer!!.layerName)
+                .replace(" ", "_")
+                .replace("[^a-zA-Z0-9_]".toRegex(), "")
+
+            val safeWellNumber = transliterate(selectedWell!!.wellNumber)
+                .replace("[^a-zA-Z0-9_]".toRegex(), "")
+
+            reportName = "Blender_${safeCompanyName}_${safeFieldName}_" +
+                    "${safeLayerName}_${safeWellNumber}_" +
+                    SimpleDateFormat("yyyy-MM-dd-HH:mm:ss", Locale.US).format(Date())
+        }
+    }
 
     LaunchedEffect(signatureBase64) {
         if (signatureBase64 != null) {
@@ -253,6 +301,48 @@ fun BlenderScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            item {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "№ ${uniqueCode.value}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = {
+                            // Копируем код в буфер обмена
+                            copyToClipboard(context, uniqueCode.value)
+                            Toast.makeText(context, "Номер скопирован", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.baseline_content_copy_24),
+                            contentDescription = "Копировать код"
+                        )
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            item {
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(MaterialTheme.colorScheme.surface)
+                )
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
             }
             item {
                 Text(
@@ -466,57 +556,12 @@ fun BlenderScreen(
                 )
             }
 
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
-            }
-            item {
-                Text(
-                    text = "Подпись",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center
-                )
-            }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+
 
             item {
-                Card(
-                    modifier = Modifier
-                        .clickable { onSignatureCardClickListener() }
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onBackground
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (signatureBitmap.value != null) {
-                            Image(
-                                bitmap = signatureBitmap.value!!,
-                                contentDescription = "Подпись",
-                                modifier = Modifier
-                                    .size(200.dp)
-                                    .background(Color.Transparent)
-                            )
-                        } else {
-                            Text(
-                                text = "Добавьте подпись",
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-                    }
-                }
-            }
 
-            item {
+
+
                 Spacer(modifier = Modifier.height(32.dp))
             }
 
@@ -525,49 +570,7 @@ fun BlenderScreen(
                 Button(
                     onClick = {
                         if (selectedField != null && selectedWell != null && selectedLayer != null && selectedCustomer != null) {
-                            val reportFile = generateBlenderReportBlender(
-                                context = context,
-                                customer = selectedCustomer!!,
-                                field = selectedField!!,
-                                layer = selectedLayer!!,
-                                well = selectedWell!!,
-                                testAttemptsMap = testAttempts,
-                                photos = photosForReagents.flatMap { it.value },
-                                signatureBitmap = signatureBitmap.value!!
-                            )
-
-                            viewModel.viewModelScope.launch {
-                                // Получаем ID реагентов по их именам
-                                val reagentIds = testAttempts.keys.associateWith { reagentName ->
-                                    viewModel.getReagentIdByName(reagentName)
-                                        ?: throw IllegalStateException("Reagent $reagentName not found")
-                                }
-
-                                val reportId = viewModel.saveReportAndGetId(
-                                    report = Report(
-                                        employeeId = employeeId,
-                                        fieldId = selectedField!!.id,
-                                        wellId = selectedWell!!.id,
-                                        layerId = selectedLayer!!.id,
-                                        customerId = selectedCustomer!!.id,
-                                        createdAt = toString(),
-                                        reportName = "blender",
-                                        reagents = emptyList()
-                                    ),
-                                    file = reportFile
-                                )
-                                Log.e("gfhfgh", reportId.toString())
-
-                                // Передаем reagentIds в метод convertToReagents
-                                viewModel.updateReportWithReagents(
-                                    reportId!!,
-                                    convertToReagents(
-                                        testAttempts,
-                                        reportId,
-                                        reagentIds
-                                    )
-                                )
-                            }
+                            showReportNameDialog = true
                         } else {
                             // Обработка случая, когда не все поля выбраны
                         }
@@ -589,110 +592,81 @@ fun BlenderScreen(
 
         }
 
-        if (showPhotoSourceDialog) {
-            AlertDialog(
-                shape = RoundedCornerShape(12.dp),
-                containerColor = MaterialTheme.colorScheme.background,
+        LoadingAndSuccessDialog(
+            isLoading = isLoading,
+            isSuccess = isSuccess,
+            onDismiss = { viewModel.resetSuccessState() }
+        )
+
+
+        if (showReportNameDialog) {
+
+            ReportNameDialog(
+                reportName = reportName,
                 onDismissRequest = {
-                    // Закрываем диалоговое окно при нажатии вне его или на кнопку "Отмена"
-                    showPhotoSourceDialog = false
+                    showReportNameDialog = false
                 },
-                title = {
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        text = "Выберите источник фотографии",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center
-                    )
-                },
-                text = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().height(100.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Card(
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .aspectRatio(1f)
-                                .dashedBorder(1.dp, MaterialTheme.colorScheme.primary, 8.dp),
-                            colors = CardDefaults.cardColors(
-                                contentColor = MaterialTheme.colorScheme.primary,
-                                containerColor = MaterialTheme.colorScheme.background
-                            ),
-                            onClick = {
-                                galleryLauncher.launch("image/*")
-                                showPhotoSourceDialog = false
+                onConfirm = {
+                    if (selectedField != null && selectedWell != null && selectedLayer != null &&
+                        selectedCustomer != null) {
+
+                        viewModel.viewModelScope.launch {
+                            val reagentIds = testAttempts.keys.associateWith { reagentName ->
+                                viewModel.getReagentIdByName(reagentName)
+                                    ?: throw IllegalStateException("Reagent $reagentName not found")
                             }
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.baseline_insert_photo_24),
-                                    contentDescription = "Добавить фото"
+
+                            val reportId = viewModel.saveReportAndGetId(
+                                report = BlenderReport(
+                                    employeeId = employeeId,
+                                    fieldId = selectedField!!.id,
+                                    wellId = selectedWell!!.id,
+                                    layerId = selectedLayer!!.id,
+                                    customerId = selectedCustomer!!.id,
+                                    reportName = reportName,
+                                    reagents = emptyList(),
+                                    code = uniqueCode.value,
+                                ),
+                                blenderReportCode = uniqueCode.value,
+                            )
+
+                            viewModel.updateReportWithReagents(
+                                reportId = reportId!!,
+                                reagents = convertToReagents(
+                                    testAttemptsMap = testAttempts,
+                                    reportId = reportId,
+                                    reagentIds = reagentIds
                                 )
-                            }
-
-
-                        }
-
-                        Card(
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .aspectRatio(1f)
-                                .dashedBorder(1.dp, MaterialTheme.colorScheme.primary, 8.dp),
-                            colors = CardDefaults.cardColors(
-                                contentColor = MaterialTheme.colorScheme.primary,
-                                containerColor = MaterialTheme.colorScheme.background
-                            ),
-                            onClick = {
-                                if (ContextCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.CAMERA
-                                    ) == PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    launchCamera()
-                                } else {
-                                    requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-                                }
-                                showPhotoSourceDialog = false
-                            }
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-
-                                Icon(
-                                    painter = painterResource(R.drawable.baseline_photo_camera_24),
-                                    contentDescription = "Добавить фото"
-                                )
-
-                            }
-
-
+                            )
+                            viewModel.saveAllPhotosForReport(reportId, context)
                         }
                     }
                 },
-                confirmButton = {
-                    Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
-                        onClick = {
-                            // Закрываем диалоговое окно
-                            showPhotoSourceDialog = false
-                        }
+            )
+        }
+
+        if (showPhotoSourceDialog) {
+
+            PhotoSourceDialog(
+                onDismissRequest = {
+                    showPhotoSourceDialog = false
+                },
+                onGallerySelected = {
+                    galleryLauncher.launch("image/*")
+                },
+                onCameraSelected = {
+                    if (ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.CAMERA
+                        ) == PackageManager.PERMISSION_GRANTED
                     ) {
-                        Text(
-                            modifier = Modifier.padding(vertical = 4.dp),
-                            text = "Отмена",
-                            style = MaterialTheme.typography.labelLarge
-                        )
+                        launchCamera()
+                    } else {
+                        requestPermissionLauncher.launch(Manifest.permission.CAMERA)
                     }
                 }
             )
+
         }
 
 
@@ -701,15 +675,270 @@ fun BlenderScreen(
 
 
 @Composable
-fun ShimmerLoadingItem() {
+fun ReportNameDialog(
+    reportName: String,
+    onDismissRequest: () -> Unit,
+    onConfirm: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
+        Column(
+            modifier = modifier
+                .background(
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+
+        ) {
+            Text(
+                text = "Название отчета",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = reportName,
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button (
+                    modifier = Modifier.weight(1f),
+                    onClick = onDismissRequest,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) {
+                    Text("Отмена")
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(
+                    onClick = {
+                        onConfirm()
+                        onDismissRequest()
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text("Подтвердить")
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun PhotoSourceDialog(
+    onDismissRequest: () -> Unit,
+    onGallerySelected: () -> Unit,
+    onCameraSelected: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
+        Column(
+            modifier = modifier
+                .background(
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+
+        ) {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Выберите источник фотографии",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Кнопка галереи
+                PhotoSourceButton(
+                    icon = painterResource(R.drawable.baseline_insert_photo_24),
+                    label = "Галерея",
+                    onClick = {
+                        onGallerySelected()
+                        onDismissRequest()
+                    }
+                )
+
+                // Кнопка камеры
+                PhotoSourceButton(
+                    icon = painterResource(R.drawable.baseline_photo_camera_24),
+                    label = "Камера",
+                    onClick = {
+                        onCameraSelected()
+                        onDismissRequest()
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                onClick = onDismissRequest,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            ) {
+                Text(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    text = "Отмена",
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun PhotoSourceButton(
+    icon: Painter,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = Modifier
+            .padding(4.dp)
+            .aspectRatio(1f)
+            .dashedBorder(1.dp, MaterialTheme.colorScheme.primary, 8.dp),
+        colors = CardDefaults.cardColors(
+            contentColor = MaterialTheme.colorScheme.primary,
+            containerColor = Color.Transparent
+        ),
+        onClick = {
+            onClick()
+        }
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = icon,
+                contentDescription = "Добавить фото"
+            )
+        }
+
+
+    }
+}
+
+@Composable
+fun ShimmerLoadingItem(height: Dp, radius: Dp) {
     Surface(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(radius))
             .fillMaxWidth()
-            .height(60.dp)
-            .shimmer(color = MaterialTheme.colorScheme.surface)
+            .height(height)
+            .shimmer(
+                listOf(
+                    MaterialTheme.colorScheme.surface,
+                    MaterialTheme.colorScheme.background,
+                    MaterialTheme.colorScheme.surface
+                )
+            )
 
     ) {
+    }
+}
+
+@Composable
+fun LoadingAndSuccessDialog(
+    isLoading: Boolean,
+    isSuccess: Boolean,
+    onDismiss: () -> Unit
+) {
+
+    val composition by rememberLottieComposition(
+        spec = LottieCompositionSpec.Asset("anim_check.json")
+    )
+
+    if (isLoading || isSuccess) {
+        Dialog(
+            onDismissRequest = { if (!isLoading) onDismiss() },
+            properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+        ) {
+            Column(
+                modifier = Modifier
+                    .size(250.dp)
+                    .background(
+                        MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                when {
+                    isLoading -> CircularProgressIndicator()
+                    isSuccess -> {
+                        LottieAnimation(
+                            composition = composition,
+                            iterations = LottieConstants.IterateForever,
+                            modifier = Modifier.size(150.dp),
+                            speed = 1f
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            onClick = {
+                                onDismiss()
+                            }
+                        ) {
+                            Text(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                text = "Закрыть",
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1207,7 +1436,7 @@ fun convertToReagents(
             id = reagentId, // Используем reagentId из переданного Map
             name = reagentName,
             tests = testAttempts.map { testAttempt ->
-                ReportTestDetail(
+                BlenderReportTestDetail(
                     reagentId = reagentId, // Используем reagentId из переданного Map
                     flowRate = testAttempt.flowRate,
                     concentration = testAttempt.concentration,

@@ -1,10 +1,10 @@
 package com.example.testapp.ui.viewmodels
 
+import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
+import android.os.Environment
 import android.util.Log
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testapp.domain.models.Customer
@@ -12,7 +12,7 @@ import com.example.testapp.domain.models.Field
 import com.example.testapp.domain.models.Layer
 import com.example.testapp.domain.models.Photo
 import com.example.testapp.domain.models.Reagent
-import com.example.testapp.domain.models.Report
+import com.example.testapp.domain.models.BlenderReport
 import com.example.testapp.domain.models.TestAttempt
 import com.example.testapp.domain.models.Well
 import com.example.testapp.domain.usecases.GetCustomers
@@ -20,18 +20,22 @@ import com.example.testapp.domain.usecases.GetFields
 import com.example.testapp.domain.usecases.GetLayers
 import com.example.testapp.domain.usecases.GetWells
 import com.example.testapp.domain.usecases.InsertBlenderReport
-import com.example.testapp.domain.usecases.LoginEmployee
+import com.example.testapp.domain.usecases.InsertPhotoReport
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -43,6 +47,7 @@ class BlenderScreenViewModel @Inject constructor(
     private val insertBlenderReport: InsertBlenderReport,
     private val updateBlenderReport: InsertBlenderReport,
     private val getReagentIdByName: InsertBlenderReport,
+    private val insertPhotoReport: InsertPhotoReport,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
@@ -82,6 +87,9 @@ class BlenderScreenViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow<Boolean>(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _isSuccess = MutableStateFlow(false)
+    val isSuccess: StateFlow<Boolean> = _isSuccess
+
     private val _reagents = listOf("ТТ ВС марка 1", "ТТ АВ", "ТТ ВА марка АР")
     val reagents: List<String> get() = _reagents
 
@@ -102,11 +110,15 @@ class BlenderScreenViewModel @Inject constructor(
     val photosForReagents: StateFlow<Map<String, List<Photo>>> get() = _photosForReagents
 
 
+    fun resetSuccessState() {
+        _isSuccess.value = false
+    }
 
-    suspend fun saveReportAndGetId(report: Report, file: File): Int? {
+    suspend fun saveReportAndGetId(report: BlenderReport, blenderReportCode: String): Int? {
         return withContext(Dispatchers.IO) {
             try {
-                insertBlenderReport.invoke(report, file)
+                _isLoading.value = true
+                insertBlenderReport.invoke(report, blenderReportCode)
             } catch (e: Exception) {
                 null
             }
@@ -116,7 +128,8 @@ class BlenderScreenViewModel @Inject constructor(
     suspend fun updateReportWithReagents(reportId: Int, reagents: List<Reagent>): Boolean {
         return withContext(Dispatchers.IO) {
             try {
-                updateBlenderReport.invoke(reportId, reagents)
+                val result = updateBlenderReport.invoke(reportId, reagents)
+                result
             } catch (e: Exception) {
                 false
             }
@@ -303,5 +316,55 @@ class BlenderScreenViewModel @Inject constructor(
         return sharedPreferences.getString("signature", null)
     }
 
+    suspend fun saveAllPhotosForReport(reportId: Int, context: Context) {
+        return try {
+            val allPhotos = _photosForReagents.value.values.flatten()
 
+            allPhotos.forEach { photo ->
+
+                val file = photo.uri.toFile(context = context)
+
+                // Загружаем фото в Supabase
+                insertPhotoReport.invoke(
+                    reportId = reportId,
+                    photoTypeName = photo.reagentName,
+                    photoFile = file,
+                    attemptNumber = photo.attemptNumber,
+                    report_photo_table_name = "report_photos"
+                )
+            }
+            _isLoading.value = false
+            _isSuccess.value = true
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+}
+
+
+fun Uri.toFile(context: Context): File {
+    val contentResolver = context.contentResolver
+    val file = createTempFile(context)
+
+    return try {
+        contentResolver.openInputStream(this)?.use { input ->
+            FileOutputStream(file).use { output ->
+                input.copyTo(output)
+            }
+        }
+        file
+    } catch (e: Exception) {
+        throw IOException("Error converting URI to file", e)
+    }
+}
+
+fun createTempFile(context: Context): File {
+    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+    val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+    return File.createTempFile(
+        "JPEG_${timeStamp}_",
+        ".jpg",
+        storageDir
+    )
 }

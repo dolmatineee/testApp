@@ -16,11 +16,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,7 +26,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -73,18 +70,22 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewModelScope
 import coil.compose.rememberImagePainter
 import com.example.testapp.R
-import com.example.testapp.domain.models.EmulsionPhoto
-import com.example.testapp.domain.models.Photo
-import com.example.testapp.domain.models.Report
+import com.example.testapp.domain.models.AcidReport
+import com.example.testapp.domain.models.BlenderReport
 import com.example.testapp.ui.customs.CustomDropdownMenu
 import com.example.testapp.ui.customs.CustomTextField
 import com.example.testapp.ui.viewmodels.AcidScreenViewModel
-import com.example.testapp.ui.viewmodels.BlenderScreenViewModel
 import com.example.testapp.utils.PhotoType
-import com.example.testapp.utils.generateBlenderReportBlender
+import com.example.testapp.utils.copyToClipboard
+import com.example.testapp.utils.generateAcidReport
 import com.example.testapp.utils.toImageBitmap
+import com.example.testapp.utils.transliterate
 import kotlinx.coroutines.launch
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -102,6 +103,7 @@ fun AcidScreen(
     val laboratorians by viewModel.laboratorians.collectAsState()
 
     val isLoading by viewModel.isLoading.collectAsState()
+    val isSuccess by viewModel.isSuccess.collectAsState()
 
     val selectedField by viewModel.selectedField.collectAsState()
     val selectedWell by viewModel.selectedWell.collectAsState()
@@ -119,7 +121,6 @@ fun AcidScreen(
     var isCustomerMenuExpanded by remember { mutableStateOf(false) }
     var isLaboratorianMenuExpanded by remember { mutableStateOf(false) }
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
-    var selectedReagent by remember { mutableStateOf<String>("") }
 
 
     val photo5000General by viewModel.photo5000General.collectAsState()
@@ -141,6 +142,40 @@ fun AcidScreen(
     var selectedPhotoType by remember { mutableStateOf<PhotoType>(PhotoType.PHOTO_5000_GENERAL) }
     val signatureBase64 = viewModel.getSignature()
     val signatureBitmap = remember { mutableStateOf<ImageBitmap?>(null) }
+
+
+    var showReportNameDialog by remember { mutableStateOf(false) }
+    var reportName by remember { mutableStateOf("") }
+
+    val uniqueCode = remember {
+        mutableStateOf(UUID.randomUUID().toString().take(8).uppercase())
+    }
+
+    LaunchedEffect(selectedCustomer, selectedField, selectedLayer, selectedWell) {
+        if (selectedCustomer != null && selectedField != null &&
+            selectedLayer != null && selectedWell != null
+        ) {
+
+            val safeCompanyName = transliterate(selectedCustomer!!.companyName)
+                .replace(" ", "_")
+                .replace("[^a-zA-Z0-9_]".toRegex(), "")
+
+            val safeFieldName = transliterate(selectedField!!.name)
+                .replace(" ", "_")
+                .replace("[^a-zA-Z0-9_]".toRegex(), "")
+
+            val safeLayerName = transliterate(selectedLayer!!.layerName)
+                .replace(" ", "_")
+                .replace("[^a-zA-Z0-9_]".toRegex(), "")
+
+            val safeWellNumber = transliterate(selectedWell!!.wellNumber)
+                .replace("[^a-zA-Z0-9_]".toRegex(), "")
+
+            reportName = "Acid_${safeCompanyName}_${safeFieldName}_" +
+                    "${safeLayerName}_${safeWellNumber}_" +
+                    SimpleDateFormat("yyyy-MM-dd-HH:mm:ss", Locale.US).format(Date())
+        }
+    }
 
     val sharedPreferences =
         LocalContext.current.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
@@ -201,6 +236,9 @@ fun AcidScreen(
                     PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> viewModel.setPhotoDensimeterConcentratedAcid(
                         uri
                     )
+
+                    PhotoType.PHOTO_SAMPLING -> {}
+                    PhotoType.PHOTO_REAGENT -> {}
                 }
             }
         }
@@ -263,6 +301,9 @@ fun AcidScreen(
                         PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> viewModel.setPhotoDensimeterConcentratedAcid(
                             uri
                         )
+
+                        PhotoType.PHOTO_SAMPLING -> {}
+                        PhotoType.PHOTO_REAGENT -> {}
                     }
                 }
             }
@@ -340,6 +381,48 @@ fun AcidScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            item {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "№ ${uniqueCode.value}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = {
+                            // Копируем код в буфер обмена
+                            copyToClipboard(context, uniqueCode.value)
+                            Toast.makeText(context, "Номер скопирован", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.baseline_content_copy_24),
+                            contentDescription = "Копировать код"
+                        )
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            item {
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(MaterialTheme.colorScheme.surface)
+                )
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
             }
             item {
                 Text(
@@ -471,11 +554,53 @@ fun AcidScreen(
                 EmulsionTestPhotoRowAcid(
                     photoDensimeterPreparedAcid = photoDensimeterPreparedAcid,
                     photoDensimeterConcentratedAcid = photoDensimeterConcentratedAcid,
-                    onAddPhoto = {
+                    onAddPhoto = { photoType ->
+                        when (photoType) {
+                            PhotoType.PHOTO_5000_AFTER_POUR_25_75 -> TODO()
+                            PhotoType.PHOTO_5000_AFTER_POUR_50_50 -> TODO()
+                            PhotoType.PHOTO_5000_AFTER_POUR_75_25 -> TODO()
+                            PhotoType.PHOTO_5000_AFTER_POUR_SPENT -> TODO()
+                            PhotoType.PHOTO_5000_GENERAL -> TODO()
+                            PhotoType.PHOTO_2000_GENERAL -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_25_75 -> TODO()
 
+                            PhotoType.PHOTO_2000_AFTER_POUR_50_50 -> TODO()
+
+                            PhotoType.PHOTO_2000_AFTER_POUR_75_25 -> TODO()
+
+                            PhotoType.PHOTO_2000_AFTER_POUR_SPENT -> TODO()
+
+                            PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> {
+                                selectedPhotoType = PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID
+                                showPhotoSourceDialog = true
+                            }
+
+                            PhotoType.PHOTO_DENSIMETER_PREPARED_ACID -> {
+                                selectedPhotoType = PhotoType.PHOTO_DENSIMETER_PREPARED_ACID
+                                showPhotoSourceDialog = true
+                            }
+
+                            PhotoType.PHOTO_SAMPLING -> TODO()
+                            PhotoType.PHOTO_REAGENT -> {}
+                        }
                     },
-                    onRemovePhoto = {
-
+                    onRemovePhoto = { photoType ->
+                        when (photoType) {
+                            PhotoType.PHOTO_5000_AFTER_POUR_25_75 -> TODO()
+                            PhotoType.PHOTO_5000_AFTER_POUR_50_50 -> TODO()
+                            PhotoType.PHOTO_5000_AFTER_POUR_75_25 -> TODO()
+                            PhotoType.PHOTO_5000_AFTER_POUR_SPENT -> TODO()
+                            PhotoType.PHOTO_5000_GENERAL -> TODO()
+                            PhotoType.PHOTO_2000_GENERAL -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_25_75 -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_50_50 -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_75_25 -> TODO()
+                            PhotoType.PHOTO_2000_AFTER_POUR_SPENT -> TODO()
+                            PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> viewModel.clearPhotoDensimeterConcentratedAcid()
+                            PhotoType.PHOTO_DENSIMETER_PREPARED_ACID -> viewModel.clearPhotoDensimeterPreparedAcid()
+                            PhotoType.PHOTO_SAMPLING -> TODO()
+                            PhotoType.PHOTO_REAGENT -> {}
+                        }
                     }
                 )
             }
@@ -550,6 +675,8 @@ fun AcidScreen(
                             PhotoType.PHOTO_2000_AFTER_POUR_SPENT -> TODO()
                             PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> TODO()
                             PhotoType.PHOTO_DENSIMETER_PREPARED_ACID -> TODO()
+                            PhotoType.PHOTO_SAMPLING -> TODO()
+                            PhotoType.PHOTO_REAGENT -> {}
                         }
                     },
                     onRemovePhoto = { photoType ->
@@ -566,6 +693,8 @@ fun AcidScreen(
                             PhotoType.PHOTO_2000_AFTER_POUR_SPENT -> TODO()
                             PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> TODO()
                             PhotoType.PHOTO_DENSIMETER_PREPARED_ACID -> TODO()
+                            PhotoType.PHOTO_SAMPLING -> TODO()
+                            PhotoType.PHOTO_REAGENT -> {}
                         }
                     }
                 )
@@ -641,6 +770,8 @@ fun AcidScreen(
 
                             PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> TODO()
                             PhotoType.PHOTO_DENSIMETER_PREPARED_ACID -> TODO()
+                            PhotoType.PHOTO_SAMPLING -> TODO()
+                            PhotoType.PHOTO_REAGENT -> {}
                         }
                     },
                     onRemovePhoto = { photoType ->
@@ -657,118 +788,44 @@ fun AcidScreen(
                             PhotoType.PHOTO_2000_AFTER_POUR_SPENT -> viewModel.clearPhoto2000AfterPour_spent()
                             PhotoType.PHOTO_DENSIMETER_CONCENTRATED_ACID -> TODO()
                             PhotoType.PHOTO_DENSIMETER_PREPARED_ACID -> TODO()
+                            PhotoType.PHOTO_SAMPLING -> TODO()
+                            PhotoType.PHOTO_REAGENT -> {}
                         }
                     }
                 )
             }
 
 
-
-
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
-            }
-            item {
-                Text(
-                    text = "Подпись",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center
-                )
-            }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            item {
-                Card(
-                    modifier = Modifier
-                        .clickable { onSignatureCardClickListener() }
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onBackground
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (signatureBitmap.value != null) {
-                            Image(
-                                bitmap = signatureBitmap.value!!,
-                                contentDescription = "Подпись",
-                                modifier = Modifier
-                                    .size(200.dp)
-                                    .background(Color.Transparent)
-                            )
-                        } else {
-                            Text(
-                                text = "Добавьте подпись",
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-                    }
-                }
-            }
-
             item {
                 Spacer(modifier = Modifier.height(32.dp))
             }
 
-            /*item {
+            item {
 
                 Button(
                     onClick = {
                         if (selectedField != null && selectedWell != null && selectedLayer != null && selectedCustomer != null) {
-                            val reportFile = generateBlenderReportBlender(
-                                context = context,
+                            /*val reportFile = generateAcidReport(
                                 customer = selectedCustomer!!,
                                 field = selectedField!!,
                                 layer = selectedLayer!!,
                                 well = selectedWell!!,
-                                testAttemptsMap = testAttempts,
-                                photos = photosForReagents.flatMap { it.value },
-                                signatureBitmap = signatureBitmap.value!!
-                            )
+                                signatureBitmap = signatureBitmap.value!!,
+                                context = context,
+                                photo5000General = photo5000General!!,
+                                photo5000AfterPour_25_75 = photo5000AfterPour_25_75!!,
+                                photo5000AfterPour_50_50 = photo5000AfterPour_50_50!!,
+                                photo5000AfterPour_75_25 = photo5000AfterPour_75_25!!,
+                                photo5000AfterPour_spent = photo5000AfterPour_spent!!,
+                                photo2000General = photo2000General!!,
+                                photo2000AfterPour_25_75 = photo2000AfterPour_25_75!!,
+                                photo2000AfterPour_50_50 = photo2000AfterPour_50_50!!,
+                                photo2000AfterPour_75_25 = photo2000AfterPour_75_25!!,
+                                photo2000AfterPour_spent = photo2000AfterPour_spent!!
+                            )*/
 
-                            viewModel.viewModelScope.launch {
-                                // Получаем ID реагентов по их именам
-                                val reagentIds = testAttempts.keys.associateWith { reagentName ->
-                                    viewModel.getReagentIdByName(reagentName)
-                                        ?: throw IllegalStateException("Reagent $reagentName not found")
-                                }
+                            showReportNameDialog = true
 
-                                val reportId = viewModel.saveReportAndGetId(
-                                    report = Report(
-                                        employeeId = employeeId,
-                                        fieldId = selectedField!!.id,
-                                        wellId = selectedWell!!.id,
-                                        layerId = selectedLayer!!.id,
-                                        customerId = selectedCustomer!!.id,
-                                        createdAt = toString(),
-                                        reportName = "blender",
-                                        reagents = emptyList()
-                                    ),
-                                    file = reportFile
-                                )
-                                Log.e("gfhfgh", reportId.toString())
-
-                                // Передаем reagentIds в метод convertToReagents
-                                viewModel.updateReportWithReagents(
-                                    reportId!!,
-                                    convertToReagents(
-                                        testAttempts,
-                                        reportId,
-                                        reagentIds
-                                    )
-                                )
-                            }
-                        } else {
-                            // Обработка случая, когда не все поля выбраны
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -780,7 +837,7 @@ fun AcidScreen(
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
-            }*/
+            }
 
             item {
                 Spacer(modifier = Modifier.height(100.dp))
@@ -1000,6 +1057,81 @@ fun AcidScreen(
                     }
                 }
             )
+        }
+
+
+        LoadingAndSuccessDialog(
+            isLoading = isLoading,
+            isSuccess = isSuccess,
+            onDismiss = { viewModel.resetSuccessState() }
+        )
+
+
+        if (showReportNameDialog) {
+
+            ReportNameDialog(
+                reportName = reportName,
+                onDismissRequest = {
+                    showReportNameDialog = false
+                },
+                onConfirm = {
+                    if (selectedField != null && selectedWell != null && selectedLayer != null &&
+                        selectedCustomer != null
+                    ) {
+                        viewModel.viewModelScope.launch {
+                            val report = AcidReport(
+                                employeeId = employeeId,
+                                fieldId = selectedField!!.id,
+                                wellId = selectedWell!!.id,
+                                layerId = selectedLayer!!.id,
+                                customerId = selectedCustomer!!.id,
+                                preparedAcidPercentage = preparedAcid.toDoubleOrNull() ?: 0.0,
+                                concentratedAcidPercentage = concentratedAcid.toDoubleOrNull()
+                                    ?: 0.0,
+                                labTechnicianId = selectedLaboratorian!!.id,
+                                code = uniqueCode.value,
+                                reportName = reportName,
+                            )
+
+                            val reportId = viewModel.saveReportAndGetId(
+                                report = report,
+                                acidReportCode = uniqueCode.value
+                            )
+
+
+                            if (reportId != null) {
+                                viewModel.setSuccessState()
+                            } else {
+
+                            }
+                        }
+                    }
+                },
+            )
+        }
+
+        if (showPhotoSourceDialog) {
+
+            PhotoSourceDialog(
+                onDismissRequest = {
+                    showPhotoSourceDialog = false
+                },
+                onGallerySelected = {
+                    galleryLauncher.launch("image/*")
+                },
+                onCameraSelected = {
+                    if (ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.CAMERA
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        launchCamera()
+                    } else {
+                        requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                }
+            )
+
         }
 
 

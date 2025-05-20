@@ -45,7 +45,7 @@ fun shareReport(file: File, context: Context) {
 
 
 
-fun generateBlenderReportBlender(
+fun generateBlenderReport(
     customer: Customer,
     field: Field,
     layer: Layer,

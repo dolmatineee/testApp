@@ -1,21 +1,30 @@
 package com.example.testapp.di
 
-import com.example.testapp.domain.repositories.EmployeeRepository
-import com.example.testapp.domain.repositories.FieldRepository
+import com.example.testapp.domain.usecases.GetBlenderPhotos
+import com.example.testapp.domain.usecases.GetBlenderReports
 import com.example.testapp.domain.usecases.GetCustomers
 import com.example.testapp.domain.usecases.GetFields
 import com.example.testapp.domain.usecases.GetLaboratorians
 import com.example.testapp.domain.usecases.GetLayers
+import com.example.testapp.domain.usecases.GetReportTypes
 import com.example.testapp.domain.usecases.GetReports
 import com.example.testapp.domain.usecases.GetWells
+import com.example.testapp.domain.usecases.InsertAcidReport
 import com.example.testapp.domain.usecases.InsertBlenderReport
+import com.example.testapp.domain.usecases.InsertGelReport
+import com.example.testapp.domain.usecases.InsertPhotoReport
 import com.example.testapp.domain.usecases.LoginEmployee
+import com.example.testapp.domain.usecases.UploadSupervisorSignatureBlenderReport
+import com.example.testapp.remote.repositories.AcidReportRepositoryImpl
 import com.example.testapp.remote.repositories.CustomerRepositoryImpl
 import com.example.testapp.remote.repositories.EmployeeRepositoryImpl
 import com.example.testapp.remote.repositories.FieldRepositoryImpl
+import com.example.testapp.remote.repositories.GelReportRepositoryImpl
 import com.example.testapp.remote.repositories.LayerRepositoryImpl
+import com.example.testapp.remote.repositories.PhotoRepositoryImpl
 import com.example.testapp.remote.repositories.ReportBlenderRepositoryImpl
 import com.example.testapp.remote.repositories.ReportRepositoryImpl
+import com.example.testapp.remote.repositories.ReportTypeRepositoryImpl
 import com.example.testapp.remote.repositories.WellRepositoryImpl
 import dagger.Module
 import dagger.Provides
@@ -61,6 +70,14 @@ object UseCaseModule {
 
     @Provides
     @Singleton
+    fun provideGetReportTypes(
+        reportTypeRepositoryImpl: ReportTypeRepositoryImpl
+    ): GetReportTypes {
+        return GetReportTypes(reportTypeRepositoryImpl)
+    }
+
+    @Provides
+    @Singleton
     fun provideLoginEmployee(
         employeeRepositoryImpl: EmployeeRepositoryImpl
     ): LoginEmployee {
@@ -89,5 +106,55 @@ object UseCaseModule {
         reportRepositoryImpl: ReportRepositoryImpl
     ): GetReports {
         return GetReports(reportRepositoryImpl)
+    }
+
+    @Provides
+    @Singleton
+    fun provideInsertPhotoBlenderReport(
+        photoRepositoryImpl: PhotoRepositoryImpl
+    ): InsertPhotoReport {
+        return InsertPhotoReport(photoRepositoryImpl)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetBlenderReport(
+        reportBlenderRepositoryImpl: ReportBlenderRepositoryImpl
+    ): GetBlenderReports {
+        return GetBlenderReports(reportBlenderRepositoryImpl)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetBlenderPhotos(
+        reportBlenderRepositoryImpl: ReportBlenderRepositoryImpl
+    ): GetBlenderPhotos {
+        return GetBlenderPhotos(reportBlenderRepositoryImpl)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUploadSupervisorSignatureBlenderReport(
+        reportBlenderRepositoryImpl: ReportBlenderRepositoryImpl
+    ): UploadSupervisorSignatureBlenderReport {
+        return UploadSupervisorSignatureBlenderReport(reportBlenderRepositoryImpl)
+    }
+
+
+    @Provides
+    @Singleton
+    fun provideInsertAcidReport(
+        acidReportRepositoryImpl: AcidReportRepositoryImpl
+    ): InsertAcidReport {
+        return InsertAcidReport(acidReportRepositoryImpl)
+    }
+
+
+    @Provides
+    @Singleton
+    fun provideInsertGelReport(
+        gelReportRepositoryImpl: GelReportRepositoryImpl
+    ): InsertGelReport {
+        return InsertGelReport(gelReportRepositoryImpl)
     }
 }

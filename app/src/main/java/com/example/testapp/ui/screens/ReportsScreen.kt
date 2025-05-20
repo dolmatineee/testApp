@@ -2,7 +2,6 @@ package com.example.testapp.ui.screens
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,50 +42,101 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.VectorPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.testapp.R
-import com.example.testapp.domain.models.Report
+import com.example.testapp.domain.models.BaseReport
+import com.example.testapp.domain.models.BlenderReport
+import com.example.testapp.domain.models.ReportFilters
 import com.example.testapp.ui.viewmodels.ReportsScreenViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportsScreen(
     viewModel: ReportsScreenViewModel = hiltViewModel(),
-    onFilterClickListener: () -> Unit
+    onFilterClickListener: () -> Unit,
+    reportFilters: ReportFilters
 ) {
 
     val reports by viewModel.reports.collectAsState()
+
+    val isLoading by viewModel.isLoading.collectAsState()
+
+    LaunchedEffect(reportFilters) {
+        viewModel.loadReports(reportFilters)
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Отчеты",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            modifier = Modifier.align(Alignment.CenterStart),
+                            text = "История",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+
+                        IconButton(
+                            onClick = {
+                                onFilterClickListener()
+                            },
+                            colors = IconButtonDefaults.iconButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onBackground
+                            ),
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(end = 8.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.baseline_filter_list_alt_24),
+                                contentDescription = "Filter",
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
                     navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                )
+                ),
             )
         }
     ) { paddingValues ->
         when {
             reports == null -> {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
+                        .padding(paddingValues)
+                        .padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    CircularProgressIndicator()
+                    repeat(6) {
+
+                        ShimmerLoadingItem(180.dp, 12.dp)
+
+                    }
+                }
+            }
+
+            isLoading -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    repeat(6) {
+
+                        ShimmerLoadingItem(180.dp, 12.dp)
+
+                    }
                 }
             }
 
@@ -100,6 +151,10 @@ fun ReportsScreen(
                 ) {
                     items(reports!!) { report ->
                         ReportItem(report = report)
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(80.dp))
                     }
                 }
             }
@@ -124,7 +179,7 @@ fun ReportsScreen(
 
 
 @Composable
-fun ReportItem(report: Report) {
+fun ReportItem(report: BaseReport) {
     var isExpanded by remember { mutableStateOf(false) }
 
     Card(

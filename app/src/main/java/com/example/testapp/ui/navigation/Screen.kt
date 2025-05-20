@@ -21,7 +21,23 @@ sealed class Screen(
 
     object Login : Screen(route = ROUTE_LOGIN)
 
-    object Signature : Screen(route = ROUTE_SIGNATURE)
+
+    object Fields : Screen(route = ROUTE_FIELDS)
+    object Wells : Screen(route = ROUTE_WELLS)
+    object Layers : Screen(route = ROUTE_LAYERS)
+    object Customers : Screen(route = ROUTE_CUSTOMERS)
+
+
+
+
+
+
+    object SupervisorCurrentReports : Screen(route = ROUTE_SUPERVISOR_CURRENT_REPORTS)
+    object SupervisorAllReports : Screen(route = ROUTE_SUPERVISOR_ALL_REPORTS)
+    object SupervisorReportsFilter : Screen(route = ROUTE_SUPERVISOR_REPORTS_FILTER)
+    object SupervisorSettings : Screen(route = ROUTE_SUPERVISOR_SUPERVISOR_SETTINGS)
+    object SupervisorSignature : Screen(route = ROUTE_SUPERVISOR_SIGNATURE)
+
 
     private companion object {
         const val ROUTE_HOME = "home"
@@ -33,6 +49,22 @@ sealed class Screen(
         const val ROUTE_HISTORY = "history"
         const val ROUTE_DETAILS = "details"
         const val ROUTE_LOGIN = "login"
-        const val ROUTE_SIGNATURE = "signature"
+
+
+
+        const val ROUTE_FIELDS = "fields"
+        const val ROUTE_WELLS = "wells"
+        const val ROUTE_LAYERS = "layers"
+        const val ROUTE_CUSTOMERS = "customers"
+
+
+
+
+        const val ROUTE_SUPERVISOR_CURRENT_REPORTS = "supervisor_current_reports"
+        const val ROUTE_SUPERVISOR_ALL_REPORTS = "supervisor_all_reports"
+        const val ROUTE_SUPERVISOR_REPORTS_FILTER = "supervisor_reports_filter"
+        const val ROUTE_SUPERVISOR_SUPERVISOR_SETTINGS = "supervisor_settings"
+        const val ROUTE_SUPERVISOR_SIGNATURE = "supervisor_signature"
+
     }
 }

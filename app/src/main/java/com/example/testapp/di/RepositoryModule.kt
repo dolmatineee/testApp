@@ -4,6 +4,7 @@ import com.example.testapp.domain.repositories.CustomerRepository
 import com.example.testapp.domain.repositories.EmployeeRepository
 import com.example.testapp.domain.repositories.FieldRepository
 import com.example.testapp.domain.repositories.LayerRepository
+import com.example.testapp.domain.repositories.PhotoRepository
 import com.example.testapp.domain.repositories.ReportBlenderRepository
 import com.example.testapp.domain.repositories.ReportRepository
 import com.example.testapp.domain.repositories.WellRepository
@@ -11,6 +12,7 @@ import com.example.testapp.remote.repositories.CustomerRepositoryImpl
 import com.example.testapp.remote.repositories.EmployeeRepositoryImpl
 import com.example.testapp.remote.repositories.FieldRepositoryImpl
 import com.example.testapp.remote.repositories.LayerRepositoryImpl
+import com.example.testapp.remote.repositories.PhotoRepositoryImpl
 import com.example.testapp.remote.repositories.ReportBlenderRepositoryImpl
 import com.example.testapp.remote.repositories.ReportRepositoryImpl
 import com.example.testapp.remote.repositories.WellRepositoryImpl
@@ -66,4 +68,10 @@ abstract class RepositoryModule {
     abstract fun bindReportRepository(
         reportRepositoryImpl: ReportRepositoryImpl
     ): ReportRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPhotoRepository(
+        photoRepositoryImpl: PhotoRepositoryImpl
+    ): PhotoRepository
 }

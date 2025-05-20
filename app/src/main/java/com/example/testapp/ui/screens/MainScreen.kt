@@ -1,6 +1,7 @@
 package com.example.testapp.ui.screens
 
 import android.annotation.SuppressLint
+import android.content.Context
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -9,26 +10,40 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.testapp.domain.models.ReportFilters
 import com.example.testapp.ui.navigation.AppNavGraph
 import com.example.testapp.ui.navigation.NavigationItem
 import com.example.testapp.ui.navigation.Screen
 import com.example.testapp.ui.navigation.rememberNavigationState
-import com.example.testapp.utils.toImageBitmap
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun MainScreen(
 ) {
+
+    val sharedPreferences = LocalContext.current.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+    val userRole = sharedPreferences.getString("position", "employee")
+
     val navigationState = rememberNavigationState()
     val navBackStackEntry by navigationState.navHostController.currentBackStackEntryAsState()
 
     val currentRoute = navBackStackEntry?.destination?.route
     val showBottomBar = currentRoute !in listOf(
         Screen.Login.route,
-        Screen.Signature.route
+        Screen.SupervisorSignature.route,
+        Screen.SupervisorReportsFilter.route,
+        Screen.Fields.route,
+        Screen.Wells.route,
+        Screen.Layers.route,
+        Screen.Customers.route,
     )
+
+    val reportFilters = remember { mutableStateOf(ReportFilters()) }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -37,11 +52,33 @@ fun MainScreen(
                     containerColor = MaterialTheme.colorScheme.background,
                 ) {
 
-                    val items = listOf(
-                        NavigationItem.Home,
-                        NavigationItem.History,
-                        NavigationItem.Settings,
-                    )
+                    val items = when(userRole) {
+                        "Ведущий супервайзер по ГРП ООО БНД" -> {
+                            listOf(
+                                NavigationItem.SupervisorCurrentReports,
+                                NavigationItem.SupervisorAllReports,
+                                NavigationItem.SupervisorSettings
+                            )
+                        }
+
+                        "Мастер ГРП ООО ЛРС" -> {
+                            listOf(
+                                NavigationItem.Home,
+                                NavigationItem.History,
+                                NavigationItem.Settings
+                            )
+                        }
+
+                        else -> {
+                            listOf(
+                                NavigationItem.Home,
+                                NavigationItem.History,
+                                NavigationItem.Settings
+                            )
+                        }
+                    }
+
+
 
                     items.forEach { item ->
 
@@ -65,7 +102,7 @@ fun MainScreen(
                             },
                             colors = NavigationBarItemDefaults.colors(
                                 indicatorColor = MaterialTheme.colorScheme.primary,
-                                selectedIconColor = MaterialTheme.colorScheme.background,
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
                             )
                         )
                     }
@@ -75,6 +112,7 @@ fun MainScreen(
         }
     ) { paddingValues ->
         AppNavGraph(
+            userRole = userRole,
             navHostController = navigationState.navHostController,
             typesReportsScreenContent = {
                 TypesReportsScreen(
@@ -85,7 +123,7 @@ fun MainScreen(
                         navigationState.navHostController.navigate(Screen.Acid.route)
                     },
                     onGelReportClickListener = {
-
+                        navigationState.navHostController.navigate(Screen.Gel.route)
                     }
                 )
             },
@@ -94,8 +132,8 @@ fun MainScreen(
                     onBackPressed = {
                         navigationState.navHostController.popBackStack()
                     },
-                    onSignatureCardClickListener =  {
-                        navigationState.navHostController.navigate(Screen.Signature.route)
+                    onSignatureCardClickListener = {
+                        navigationState.navHostController.navigate(Screen.SupervisorSignature.route)
                     }
                 )
             },
@@ -105,22 +143,34 @@ fun MainScreen(
                         navigationState.navHostController.popBackStack()
                     },
                     onSignatureCardClickListener = {
-                        navigationState.navHostController.navigate(Screen.Signature.route)
+                        navigationState.navHostController.navigate(Screen.SupervisorSignature.route)
                     }
                 )
             },
             gelScreenContent = {
-
+                GelScreen(
+                    onBackPressed = {
+                        navigationState.navHostController.popBackStack()
+                    }
+                )
             },
             historyScreenContent = {
                 ReportsScreen(
                     onFilterClickListener = {
-
-                    }
+                        navigationState.navHostController.navigate(Screen.SupervisorReportsFilter.route)
+                    },
+                    reportFilters = reportFilters.value
                 )
             },
             settingsScreenContent = {
+                ProfileScreen(
+                    onLogoutClickListener = {
 
+                    },
+                    onSignatureCardClickListener = {
+                        navigationState.navHostController.navigate(Screen.SupervisorSignature.route)
+                    }
+                )
             },
             detailsScreenContent = {
 
@@ -132,9 +182,106 @@ fun MainScreen(
                     }
                 )
             },
-            signatureScreenContent = {
+            supervisorCurrentReportsContent = {
+                SupervisorReportsScreen()
+            },
+            supervisorAllReportsContent = {
+                ReportsScreen(
+                    onFilterClickListener = {
+                        navigationState.navHostController.navigate(Screen.SupervisorReportsFilter.route)
+                    },
+                    reportFilters = reportFilters.value
+                )
+            },
+            supervisorReportsFilterContent = {
+                FilterScreen(
+                    onBackPressed = {
+                        navigationState.navHostController.popBackStack()
+                    },
+                    onDeleteFilters = {
+                        reportFilters.value = ReportFilters()
+                    },
+                    onSaveFilters = { newFilters ->
+                        reportFilters.value = newFilters
+                        navigationState.navHostController.popBackStack()
+                    },
+                    onFieldsClick = {
+                        navigationState.navHostController.navigate(Screen.Fields.route)
+                    },
+                    onWellsClick = {
+                        navigationState.navHostController.navigate(Screen.Wells.route)
+                    },
+                    onLayersClick = {
+                        navigationState.navHostController.navigate(Screen.Layers.route)
+                    },
+                    onCustomersClick = {
+                        navigationState.navHostController.navigate(Screen.Customers.route)
+                    },
+                    reportFilters = reportFilters.value,
+                )
+            },
+            supervisorSettingsContent = {
+                ProfileScreen(
+                    onLogoutClickListener = {
+
+                    },
+                    onSignatureCardClickListener = {
+                        navigationState.navHostController.navigate(Screen.SupervisorSignature.route)
+                    }
+                )
+            },
+            supervisorSignatureContent = {
                 SignatureScreen(
                     onBackClickListener = {
+                        navigationState.navHostController.popBackStack()
+                    },
+
+                    )
+            },
+            fieldsScreenContent = {
+                FieldsScreen(
+                    reportFilters = reportFilters.value,
+                    onBackPressed = {
+                        navigationState.navHostController.popBackStack()
+                    },
+                    onSaveFields = { selectedFields ->
+                        reportFilters.value = reportFilters.value.copy(fields = selectedFields)
+                        navigationState.navHostController.popBackStack()
+                    }
+                )
+            },
+            wellsScreenContent = {
+                WellsScreen (
+                    reportFilters = reportFilters.value,
+                    onBackPressed = {
+                        navigationState.navHostController.popBackStack()
+                    },
+                    onSaveWells = { selectedWells ->
+                        reportFilters.value = reportFilters.value.copy(wells = selectedWells)
+                        navigationState.navHostController.popBackStack()
+                    }
+                )
+            },
+            layersScreenContent = {
+                LayersScreen  (
+                    reportFilters = reportFilters.value,
+                    onBackPressed = {
+                        navigationState.navHostController.popBackStack()
+                    },
+                    onSaveLayers = { selectedLayers ->
+                        reportFilters.value = reportFilters.value.copy(layers = selectedLayers)
+                        navigationState.navHostController.popBackStack()
+                    }
+                )
+            },
+            customersScreenContent = {
+                CustomersScreen (
+                    reportFilters = reportFilters.value,
+                    onBackPressed = {
+                        navigationState.navHostController.popBackStack()
+                    },
+                    onSaveCustomers = { selectedCustomers ->
+                        reportFilters.value = reportFilters.value.copy(customers = selectedCustomers)
                         navigationState.navHostController.popBackStack()
                     }
                 )
@@ -142,3 +289,6 @@ fun MainScreen(
         )
     }
 }
+
+
+
