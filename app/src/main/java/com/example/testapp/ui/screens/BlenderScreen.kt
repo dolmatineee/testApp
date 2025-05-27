@@ -102,6 +102,7 @@ import com.example.testapp.ui.customs.CustomTextField
 import com.example.testapp.ui.customs.shimmer
 import com.example.testapp.ui.viewmodels.BlenderScreenViewModel
 import com.example.testapp.utils.copyToClipboard
+import com.example.testapp.utils.generateBlenderReport
 import com.example.testapp.utils.toImageBitmap
 import com.example.testapp.utils.transliterate
 import kotlinx.coroutines.launch
@@ -610,8 +611,11 @@ fun BlenderScreen(
                     if (selectedField != null && selectedWell != null && selectedLayer != null &&
                         selectedCustomer != null) {
 
+
+
                         viewModel.viewModelScope.launch {
                             val reagentIds = testAttempts.keys.associateWith { reagentName ->
+                                Log.e("reagentName", reagentName)
                                 viewModel.getReagentIdByName(reagentName)
                                     ?: throw IllegalStateException("Reagent $reagentName not found")
                             }
@@ -628,6 +632,7 @@ fun BlenderScreen(
                                     code = uniqueCode.value,
                                 ),
                                 blenderReportCode = uniqueCode.value,
+                                context = context,
                             )
 
                             viewModel.updateReportWithReagents(

@@ -61,6 +61,14 @@ fun MainScreen(
                             )
                         }
 
+                        "Инженер ГРП ООО ЛРС" -> {
+                            listOf(
+                                NavigationItem.EngineerCurrentReports,
+                                NavigationItem.SupervisorAllReports,
+                                NavigationItem.SupervisorSettings
+                            )
+                        }
+
                         "Мастер ГРП ООО ЛРС" -> {
                             listOf(
                                 NavigationItem.Home,
@@ -251,7 +259,7 @@ fun MainScreen(
                 )
             },
             wellsScreenContent = {
-                WellsScreen (
+                WellsScreen(
                     reportFilters = reportFilters.value,
                     onBackPressed = {
                         navigationState.navHostController.popBackStack()
@@ -263,7 +271,7 @@ fun MainScreen(
                 )
             },
             layersScreenContent = {
-                LayersScreen  (
+                LayersScreen(
                     reportFilters = reportFilters.value,
                     onBackPressed = {
                         navigationState.navHostController.popBackStack()
@@ -275,16 +283,20 @@ fun MainScreen(
                 )
             },
             customersScreenContent = {
-                CustomersScreen (
+                CustomersScreen(
                     reportFilters = reportFilters.value,
                     onBackPressed = {
                         navigationState.navHostController.popBackStack()
                     },
                     onSaveCustomers = { selectedCustomers ->
-                        reportFilters.value = reportFilters.value.copy(customers = selectedCustomers)
+                        reportFilters.value =
+                            reportFilters.value.copy(customers = selectedCustomers)
                         navigationState.navHostController.popBackStack()
                     }
                 )
+            },
+            engineerCurrentReportsContent = {
+                EngineerReportsScreen()
             }
         )
     }

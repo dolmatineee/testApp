@@ -58,7 +58,6 @@ fun Modifier.shimmer(
     )
 }
 
-// Default shimmer colors
 private val ShimmerColorShades = listOf(
     Color.LightGray.copy(alpha = 0.9f),
     Color.LightGray.copy(alpha = 0.2f),

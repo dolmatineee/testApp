@@ -8,12 +8,14 @@ import com.example.testapp.domain.usecases.GetLaboratorians
 import com.example.testapp.domain.usecases.GetLayers
 import com.example.testapp.domain.usecases.GetReportTypes
 import com.example.testapp.domain.usecases.GetReports
+import com.example.testapp.domain.usecases.GetStatuses
 import com.example.testapp.domain.usecases.GetWells
 import com.example.testapp.domain.usecases.InsertAcidReport
 import com.example.testapp.domain.usecases.InsertBlenderReport
 import com.example.testapp.domain.usecases.InsertGelReport
 import com.example.testapp.domain.usecases.InsertPhotoReport
 import com.example.testapp.domain.usecases.LoginEmployee
+import com.example.testapp.domain.usecases.UploadEngineerSignatureBlenderReport
 import com.example.testapp.domain.usecases.UploadSupervisorSignatureBlenderReport
 import com.example.testapp.remote.repositories.AcidReportRepositoryImpl
 import com.example.testapp.remote.repositories.CustomerRepositoryImpl
@@ -25,6 +27,7 @@ import com.example.testapp.remote.repositories.PhotoRepositoryImpl
 import com.example.testapp.remote.repositories.ReportBlenderRepositoryImpl
 import com.example.testapp.remote.repositories.ReportRepositoryImpl
 import com.example.testapp.remote.repositories.ReportTypeRepositoryImpl
+import com.example.testapp.remote.repositories.StatusRepositoryImpl
 import com.example.testapp.remote.repositories.WellRepositoryImpl
 import dagger.Module
 import dagger.Provides
@@ -42,6 +45,14 @@ object UseCaseModule {
         fieldRepositoryImpl: FieldRepositoryImpl
     ): GetFields {
         return GetFields(fieldRepositoryImpl)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetStatuses(
+        statusRepositoryImpl: StatusRepositoryImpl
+    ): GetStatuses {
+        return GetStatuses(statusRepositoryImpl)
     }
 
     @Provides
@@ -138,6 +149,14 @@ object UseCaseModule {
         reportBlenderRepositoryImpl: ReportBlenderRepositoryImpl
     ): UploadSupervisorSignatureBlenderReport {
         return UploadSupervisorSignatureBlenderReport(reportBlenderRepositoryImpl)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUploadEngineerSignatureBlenderReport(
+        reportBlenderRepositoryImpl: ReportBlenderRepositoryImpl
+    ): UploadEngineerSignatureBlenderReport {
+        return UploadEngineerSignatureBlenderReport(reportBlenderRepositoryImpl)
     }
 
 

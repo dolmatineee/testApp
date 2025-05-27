@@ -1,5 +1,6 @@
 package com.example.testapp.domain.usecases
 
+import android.content.Context
 import android.net.Uri
 import com.example.testapp.domain.models.AcidReport
 import com.example.testapp.domain.models.BaseReport
@@ -13,9 +14,11 @@ import com.example.testapp.domain.models.BlenderReport
 import com.example.testapp.domain.models.GelReport
 import com.example.testapp.domain.models.ReportFilters
 import com.example.testapp.domain.models.ReportPhoto
+import com.example.testapp.domain.models.ReportStatus
 import com.example.testapp.domain.models.ReportType
 import com.example.testapp.domain.models.ReportTypeEnum
 import com.example.testapp.domain.models.Well
+import com.example.testapp.remote.models.ReportStatusDto
 import com.example.testapp.remote.repositories.AcidReportRepositoryImpl
 import com.example.testapp.remote.repositories.CustomerRepositoryImpl
 import com.example.testapp.remote.repositories.EmployeeRepositoryImpl
@@ -26,6 +29,7 @@ import com.example.testapp.remote.repositories.PhotoRepositoryImpl
 import com.example.testapp.remote.repositories.ReportBlenderRepositoryImpl
 import com.example.testapp.remote.repositories.ReportRepositoryImpl
 import com.example.testapp.remote.repositories.ReportTypeRepositoryImpl
+import com.example.testapp.remote.repositories.StatusRepositoryImpl
 import com.example.testapp.remote.repositories.WellRepositoryImpl
 import com.example.testapp.utils.PhotoType
 import java.io.File
@@ -41,6 +45,18 @@ class GetFields @Inject constructor(
 
     suspend operator fun invoke(id: Int): Field? {
         return fieldRepositoryImpl.getFieldById(id)
+    }
+}
+
+class GetStatuses @Inject constructor(
+    private val statusRepositoryImpl: StatusRepositoryImpl
+) {
+    suspend operator fun invoke(): List<ReportStatus> {
+        return statusRepositoryImpl.getStatuses()
+    }
+
+    suspend operator fun invoke(id: Int): ReportStatus? {
+        return statusRepositoryImpl.getStatusById(id)
     }
 }
 
@@ -63,6 +79,7 @@ class GetLayers @Inject constructor(
     suspend operator fun invoke(): List<Layer> {
         return layerRepositoryImpl.getLayers()
     }
+
     suspend operator fun invoke(id: Int): Layer? {
         return layerRepositoryImpl.getLayerById(id)
     }
@@ -74,6 +91,7 @@ class GetCustomers @Inject constructor(
     suspend operator fun invoke(): List<Customer> {
         return customerRepositoryImpl.getCustomers()
     }
+
     suspend operator fun invoke(id: Int): Customer? {
         return customerRepositoryImpl.getCustomerById(id)
     }
@@ -111,8 +129,19 @@ class GetLaboratorians @Inject constructor(
 class InsertBlenderReport @Inject constructor(
     private val blenderRepositoryImpl: ReportBlenderRepositoryImpl
 ) {
-    suspend operator fun invoke(report: BlenderReport, blenderReportCode: String): Int? {
-        return blenderRepositoryImpl.insertReportBlender(report, blenderReportCode)
+    suspend operator fun invoke(
+        report: BlenderReport,
+        blenderReportCode: String,
+        reportFile: File,
+
+        context: Context
+    ): Int? {
+        return blenderRepositoryImpl.insertReportBlender(
+            report,
+            blenderReportCode,
+            reportFile,
+            context
+        )
     }
 
     suspend operator fun invoke(reportsId: Int, reagents: List<Reagent>): Boolean {
@@ -128,11 +157,19 @@ class InsertBlenderReport @Inject constructor(
 class InsertAcidReport @Inject constructor(
     private val acidReportRepositoryImpl: AcidReportRepositoryImpl
 ) {
-    suspend operator fun invoke(report: AcidReport, acidReportCode: String, photos: Map<PhotoType, Uri>): Int? {
+    suspend operator fun invoke(
+        report: AcidReport,
+        acidReportCode: String,
+        photos: Map<PhotoType, Uri>,
+        reportFile: File,
+        context: Context
+    ): Int? {
         return acidReportRepositoryImpl.saveReportAndGetId(
             report = report,
             acidReportCode = acidReportCode,
-            photos = photos
+            photos = photos,
+            reportFile = reportFile,
+            context = context
         )
     }
 
@@ -141,7 +178,11 @@ class InsertAcidReport @Inject constructor(
 class InsertGelReport @Inject constructor(
     private val gelReportRepositoryImpl: GelReportRepositoryImpl
 ) {
-    suspend operator fun invoke(report: GelReport, gelReportCode: String, photoSamplingUri: Uri): Int? {
+    suspend operator fun invoke(
+        report: GelReport,
+        gelReportCode: String,
+        photoSamplingUri: Uri
+    ): Int? {
         return gelReportRepositoryImpl.saveReportAndGetId(
             report = report,
             gelReportCode = gelReportCode,
@@ -154,7 +195,7 @@ class InsertGelReport @Inject constructor(
 class GetReports @Inject constructor(
     private val reportRepositoryImpl: ReportRepositoryImpl
 ) {
-    suspend operator fun invoke(filters: ReportFilters): List<BaseReport>? {
+    suspend operator fun invoke(filters: ReportFilters): List<BaseReport> {
         return reportRepositoryImpl.getReports(
             filters = filters
         )
@@ -184,11 +225,19 @@ class InsertPhotoReport @Inject constructor(
 class GetSupervisorReports @Inject constructor(
     private val blenderRepositoryImpl: ReportBlenderRepositoryImpl
 ) {
-    suspend operator fun invoke(): List<BaseReport>  {
+    suspend operator fun invoke(): List<BaseReport> {
         return blenderRepositoryImpl.getSupervisorReports()
     }
 }
 
+
+class GetEngineerReports @Inject constructor(
+    private val blenderRepositoryImpl: ReportBlenderRepositoryImpl
+) {
+    suspend operator fun invoke(): List<BaseReport> {
+        return blenderRepositoryImpl.getEngineerReports()
+    }
+}
 
 
 class GetBlenderReports @Inject constructor(
@@ -197,7 +246,6 @@ class GetBlenderReports @Inject constructor(
     suspend operator fun invoke(): List<BlenderReport> {
         return blenderRepositoryImpl.getBlenderReportsSupervisor()
     }
-
 
 
 }
@@ -222,6 +270,19 @@ class UploadSupervisorSignatureBlenderReport @Inject constructor(
         signatureFile: File
     ): String? {
         return blenderRepositoryImpl.uploadSupervisorSignature(reportId, reportType, signatureFile)
+    }
+
+}
+
+class UploadEngineerSignatureBlenderReport @Inject constructor(
+    private val blenderRepositoryImpl: ReportBlenderRepositoryImpl
+) {
+    suspend operator fun invoke(
+        reportId: Int,
+        reportType: ReportTypeEnum,
+        signatureFile: File
+    ): String? {
+        return blenderRepositoryImpl.uploadEngineerSignature(reportId, reportType, signatureFile)
     }
 
 }

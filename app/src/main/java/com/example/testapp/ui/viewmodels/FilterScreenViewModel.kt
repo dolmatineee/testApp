@@ -38,6 +38,7 @@ class FilterScreenViewModel @Inject constructor(
 
     init {
         loadData()
+
     }
 
     private fun loadData() {
@@ -48,6 +49,7 @@ class FilterScreenViewModel @Inject constructor(
 
     fun onReportTypeSelected(typeId: Int?) {
         _selectedReportTypeId.value = typeId
+        Log.e("onReportTypeSelected", typeId.toString())
     }
 
     fun setFields(fields: List<Field>) {

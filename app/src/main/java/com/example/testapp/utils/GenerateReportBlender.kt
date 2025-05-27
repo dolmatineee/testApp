@@ -52,7 +52,6 @@ fun generateBlenderReport(
     well: Well,
     testAttemptsMap: Map<String, List<TestAttempt>>,
     photos: List<Photo>,
-    signatureBitmap: ImageBitmap, // Все фотографии
     context: Context
 ): File {
     // Создаем новый документ
@@ -287,53 +286,9 @@ fun generateBlenderReport(
         subRowCounter = 1
     }
 
-    val byteArrayOutputStream = ByteArrayOutputStream()
-    signatureBitmap.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
-    val signatureBytes = byteArrayOutputStream.toByteArray()
 
-    val sharedPreferences = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
-    val footerParagraph = document.createParagraph()
-    footerParagraph.alignment = ParagraphAlignment.BOTH
 
-// Добавляем должность (прижата к левому краю)
-    val positionRun = footerParagraph.createRun()
-    positionRun.setText(sharedPreferences.getString("position", null))
-    positionRun.fontSize = 16
-    positionRun.isBold = true
-    positionRun.fontFamily = "Times New Roman"
-    positionRun.addTab()
 
-    // Получаем размеры изображения с помощью Apache Commons Imaging
-    val (width, height) = getImageDimensions(signatureBytes)
-    val aspectRatio = width.toDouble() / height.toDouble()
-
-    // Устанавливаем высоту изображения (400 пикселей), ширина рассчитывается автоматически
-    var signatureHeight = 70.0
-    var signatureWidth = signatureHeight * aspectRatio
-
-    // Если ширина превышает максимальную, уменьшаем её
-    if (signatureWidth > 120.0) {
-        signatureWidth = 120.0
-        signatureHeight = signatureWidth / aspectRatio
-    }
-
-// Добавляем фотографию подписи (маленькая, рядом с ФИО)
-    val signatureRun = footerParagraph.createRun()
-    signatureRun.addPicture(
-        ByteArrayInputStream(signatureBytes),
-        XWPFDocument.PICTURE_TYPE_PNG,
-        "signature.png",
-        Units.toEMU(signatureHeight), // Ширина подписи
-        Units.toEMU(signatureWidth)  // Высота подписи
-    )
-    signatureRun.addTab()
-
-// Добавляем ФИО (прижато к правому краю)
-    val fullNameRun = footerParagraph.createRun()
-    fullNameRun.setText(sharedPreferences.getString("fullName", null))
-    fullNameRun.fontSize = 16
-    fullNameRun.isBold = true
-    fullNameRun.fontFamily = "Times New Roman"
 
 
 // Сохраняем документ во временный файл

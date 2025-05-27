@@ -34,6 +34,10 @@ fun AppNavGraph(
     supervisorReportsFilterContent: @Composable () -> Unit,
     supervisorSettingsContent: @Composable () -> Unit,
     supervisorSignatureContent: @Composable () -> Unit,
+
+
+
+    engineerCurrentReportsContent: @Composable () -> Unit,
 ) {
     val sharedPreferences = LocalContext.current.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
     val isLoggedIn = sharedPreferences.getBoolean("isLoggedIn", false)
@@ -45,6 +49,7 @@ fun AppNavGraph(
             when (userRole) {
                 "Ведущий супервайзер по ГРП ООО БНД" -> Screen.SupervisorCurrentReports.route
                 "Мастер ГРП ООО ЛРС" -> Screen.Home.route
+                "Инженер ГРП ООО ЛРС" -> Screen.EngineerCurrentReports.route
                 else -> {
                     Screen.Login.route
                 }
@@ -121,6 +126,8 @@ fun AppNavGraph(
         }
 
 
-
+        composable(Screen.EngineerCurrentReports.route) {
+            engineerCurrentReportsContent()
+        }
     }
 }

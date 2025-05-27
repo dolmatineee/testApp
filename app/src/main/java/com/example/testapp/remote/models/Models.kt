@@ -13,8 +13,10 @@ import com.example.testapp.domain.models.ReportPhoto
 import com.example.testapp.domain.models.BlenderReportReagentLink
 import com.example.testapp.domain.models.BlenderReportTestDetail
 import com.example.testapp.domain.models.GelReport
+import com.example.testapp.domain.models.ReportStatus
 import com.example.testapp.domain.models.ReportType
 import com.example.testapp.domain.models.Well
+import com.example.testapp.utils.StringOrIntSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -142,6 +144,21 @@ data class PositionDto(
     @SerialName("position_name")
     val positionName: String
 )
+@Serializable
+data class ReportStatusDto(
+    @SerialName("id")
+    val id: Int,
+
+    @SerialName("status_name")
+    val statusName: String = "unknown"
+) {
+    fun toDomain(): ReportStatus {
+        return ReportStatus(
+            id = this.id,
+            status_name = this.statusName
+        )
+    }
+}
 
 @Serializable
 data class BlenderReportDto(
@@ -154,12 +171,15 @@ data class BlenderReportDto(
     @SerialName("file_url") val file_url: String? = null,
     @SerialName("created_at") val created_at: String? = null,
     @SerialName("report_name") val report_name: String,
-    @SerialName("code") val code: String
+    @SerialName("code") val code: String,
+    @Serializable(with = StringOrIntSerializer::class)
+    @SerialName("supervisor_signature_url") val supervisorSignatureUrl: String? = null,
+    @Serializable(with = StringOrIntSerializer::class)
+    @SerialName("engineer_signature_url") val engineerSignatureUrl: String? = null,
+    @SerialName("report_statuses") val status: ReportStatusDto? = null
 ) {
     fun toDomain(
         reagents: List<Reagent> = emptyList(),
-        supervisorSignatureUrl: String? = null,
-        engineerSignatureUrl: String? = null
     ): BlenderReport {
         return BlenderReport(
             id = id,
@@ -174,7 +194,10 @@ data class BlenderReportDto(
             reportName = report_name,
             reagents = reagents,
             supervisorSignatureUrl = supervisorSignatureUrl,
-            engineerSignatureUrl = engineerSignatureUrl
+            engineerSignatureUrl = engineerSignatureUrl,
+            supervisor_signature_url = supervisorSignatureUrl,
+            engineer_signature_url = engineerSignatureUrl,
+            status = status?.statusName
         )
     }
 }
@@ -285,7 +308,7 @@ data class PhotoTypeDto(
     @SerialName("id")
     val id: Int,
 
-    @SerialName("name")
+    @SerialName("statusName")
     val name: String,
 
     @SerialName("description")
@@ -359,6 +382,12 @@ data class AcidReportDto(
 
     @SerialName("prepared_acid_percentage")
     val preparedAcidPercentage: Double
+    ,
+    @Serializable(with = StringOrIntSerializer::class)
+    @SerialName("supervisor_signature_url") val supervisorSignatureUrl: String? = null,
+    @Serializable(with = StringOrIntSerializer::class)
+    @SerialName("engineer_signature_url") val engineerSignatureUrl: String? = null,
+    @SerialName("report_statuses") val status: ReportStatusDto? = null
 ) {
     fun toDomain(): AcidReport {
         return AcidReport(
@@ -374,7 +403,10 @@ data class AcidReportDto(
             reportName = this.reportName,
             code = this.code,
             concentratedAcidPercentage = this.concentratedAcidPercentage,
-            preparedAcidPercentage = this.preparedAcidPercentage
+            preparedAcidPercentage = this.preparedAcidPercentage,
+            supervisor_signature_url = this.supervisorSignatureUrl,
+            engineer_signature_url = this.engineerSignatureUrl,
+            status = this.status?.statusName
         )
     }
 }
@@ -419,7 +451,12 @@ data class GelReportDto(
     val reportName: String,
 
     @SerialName("code")
-    val code: String
+    val code: String,
+    @Serializable(with = StringOrIntSerializer::class)
+    @SerialName("supervisor_signature_url") val supervisorSignatureUrl: String? = null,
+    @Serializable(with = StringOrIntSerializer::class)
+    @SerialName("engineer_signature_url") val engineerSignatureUrl: String? = null,
+    @SerialName("status_id") val status: ReportStatusDto? = null
 ) {
     fun toDomain(): GelReport {
         return GelReport(
@@ -432,7 +469,10 @@ data class GelReportDto(
             fileUrl = this.fileUrl,
             createdAt = this.createdAt,
             reportName = this.reportName,
-            code = this.code
+            code = this.code,
+            supervisor_signature_url = this.supervisorSignatureUrl,
+            engineer_signature_url = this.engineerSignatureUrl,
+            status = this.status?.statusName
         )
     }
 }
@@ -454,8 +494,13 @@ data class ReportSignatureDto(
     val signature_id: Int
 )
 
+
+
 @Serializable
-data class ReportStatusDto(
+data class
+ReportForStatusDto(
     val id: Int,
-    val status_id: Int
+    val status: String,
+    val supervisorSignatureUrl: String? = null,
+    val engineerSignatureUrl: String? = null
 )

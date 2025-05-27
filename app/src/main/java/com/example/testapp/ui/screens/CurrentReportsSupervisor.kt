@@ -6,6 +6,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,19 +19,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,8 +66,12 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -70,6 +80,8 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.testapp.R
+import com.example.testapp.domain.models.BaseReport
 import com.example.testapp.domain.models.BlenderReport
 import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Field
@@ -91,7 +103,6 @@ fun SupervisorReportsScreen(
     viewModel: SupervisorReportsViewModel = hiltViewModel()
 ) {
     val reports by viewModel.reports.collectAsState()
-    val currentReport by viewModel.currentReport.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
     val signatureBase64 = viewModel.getSignature()
@@ -105,10 +116,10 @@ fun SupervisorReportsScreen(
     var showConfirmationDialog by remember { mutableStateOf(false) }
     var showLoadingDialog by remember { mutableStateOf(false) }
     var showSuccessDialog by remember { mutableStateOf(false) }
-    var currentReportId: Int? by remember { mutableStateOf(null) }
+    var currentReport: BaseReport? by remember { mutableStateOf(null) }
 
-    fun onSignReportClicked(reportId: Int) {
-        currentReportId = reportId
+    fun onSignReportClicked(report: BaseReport) {
+        currentReport = report
         showConfirmationDialog = true
     }
 
@@ -116,11 +127,11 @@ fun SupervisorReportsScreen(
         showConfirmationDialog = false
         showLoadingDialog = true
 
-        currentReportId?.let { reportId ->
+        currentReport.let { report ->
             viewModel.uploadSupervisorSignature(
-                reportId = reportId,
+                reportId = report?.id!!,
                 signatureFile = file,
-                reportType = TODO()
+                reportType = report.reportType
             ) { success ->
 
 
@@ -128,7 +139,11 @@ fun SupervisorReportsScreen(
                 if (success) {
                     showSuccessDialog = true
                 } else {
-                    Toast.makeText(context, "Произошла ошибка, повторите попытку", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        "Произошла ошибка, повторите попытку",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
@@ -193,22 +208,22 @@ fun SupervisorReportsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(reports) { report ->
-                    val photos by viewModel.getReportPhotos(report.id!!)
+                    val photos by viewModel.getReportPhotos(report.id!!, report.reportType)
                         .collectAsState(initial = emptyList())
-                    Log.e("fghfghfghh", photos.toString())
+                    Log.e("fghfghfghh", report.toString())
+
                     ReportCardSignature(
                         photos = photos,
                         report = report,
                         onClick = {
-                            report.id?.let { reportId ->
-                                onSignReportClicked(reportId)
-                            }
+                            onSignReportClicked(report)
                         },
-                        field = viewModel.getFieldById(report.fieldId),
-                        well = viewModel.getWellById(report.wellId),
-                        layer = viewModel.getLayerById(report.layerId),
-                        customer = viewModel.getCustomerById(report.customerId),
+                        field = viewModel.getFieldById(report.fieldId!!),
+                        well = viewModel.getWellById(report.wellId!!),
+                        layer = viewModel.getLayerById(report.layerId!!),
+                        customer = viewModel.getCustomerById(report.customerId!!),
                     )
+
                 }
 
                 item {
@@ -218,40 +233,96 @@ fun SupervisorReportsScreen(
         }
 
         if (showConfirmationDialog) {
-            AlertDialog(
-                onDismissRequest = { showConfirmationDialog = false },
-                title = { Text("Подтверждение") },
-                text = { Text("Вы уверены, что хотите подписать отчет?") },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            confirmSignReport()
-                        }
-                    ) {
-                        Text("Да")
-                    }
+
+            Dialog(
+                onDismissRequest = {
+                    showConfirmationDialog = false
                 },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showConfirmationDialog = false }
+                properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.surface,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+
+                ) {
+                    Text(
+                        text = "Подтверждение",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Вы уверены, что хотите подписать отчет?",
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Нет")
+                        Button (
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                showConfirmationDialog = false
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text("Отмена")
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Button(
+                            onClick = {
+                                confirmSignReport()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Text("Подтвердить")
+                        }
                     }
                 }
-            )
+            }
+
         }
 
 
         if (showLoadingDialog) {
             Dialog(
                 onDismissRequest = { /* Нельзя закрыть */ },
-                properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+                properties = DialogProperties(
+                    dismissOnBackPress = false,
+                    dismissOnClickOutside = false
+                )
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(200.dp)
-                        .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp))
+                        .background(
+                            MaterialTheme.colorScheme.surface,
+                            shape = RoundedCornerShape(8.dp)
+                        )
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -267,12 +338,16 @@ fun SupervisorReportsScreen(
 
         // Диалог успеха
         if (showSuccessDialog) {
+
             val composition by rememberLottieComposition(
                 spec = LottieCompositionSpec.Asset("anim_check.json")
             )
             Dialog(
                 onDismissRequest = { showSuccessDialog = false },
-                properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+                properties = DialogProperties(
+                    dismissOnBackPress = false,
+                    dismissOnClickOutside = false
+                )
             ) {
                 Column(
                     modifier = Modifier
@@ -299,6 +374,7 @@ fun SupervisorReportsScreen(
                         shape = RoundedCornerShape(8.dp),
                         onClick = {
                             showSuccessDialog = false
+                            viewModel.loadReports()
                         }
                     ) {
                         Text(
@@ -377,8 +453,8 @@ fun ReportsList(
     }
 }*/
 @Composable
-private fun ReportCardSignature(
-    report: BlenderReport,
+fun ReportCardSignature(
+    report: BaseReport,
     onClick: () -> Unit,
     photos: List<ReportPhoto> = emptyList(),
     modifier: Modifier = Modifier,
@@ -465,7 +541,7 @@ private fun ReportCardSignature(
                 color = MaterialTheme.colorScheme.onBackground.copy(0.5f)
             )
 
-            if (report.supervisorSignatureUrl != null) {
+            /*if (report.supervisorSignatureUrl != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 BadgedBox(
                     badge = {
@@ -484,7 +560,7 @@ private fun ReportCardSignature(
                     )
                 }
             }
-
+*/
             Spacer(modifier = Modifier.height(12.dp))
             Divider()
 
@@ -536,16 +612,10 @@ private fun ReportCardSignature(
                     }
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    ReagentsTable(report.reagents)
-
-
-
-                    Spacer(modifier = Modifier.height(12.dp))
 
                     Button(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 32.dp),
+                            .fillMaxWidth(),
                         onClick = {
                             onClick()
                         },
@@ -556,11 +626,16 @@ private fun ReportCardSignature(
                             text = "Подписать отчет"
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Divider()
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
+
+
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-
             Box(
                 modifier = Modifier
                     .dashedBorder(1.dp, MaterialTheme.colorScheme.onSurface, 8.dp)
@@ -661,4 +736,149 @@ private fun ReagentsTable(reagents: List<Reagent>) {
         }
     }
 }
+
+
+
+
+/*
+data class Comment(
+    val id: Int,
+    val username: String,
+    val avatarRes: Int,
+    val text: String,
+    val date: String,
+    var likesCount: Int,
+    var isLiked: Boolean = false
+)
+
+@Preview
+@Composable
+fun CommentsScreen() {
+    // Пример данных комментариев
+    var comments by remember {
+        mutableStateOf(
+            listOf(
+                Comment(
+                    id = 1,
+                    username = "user123",
+                    avatarRes = R.drawable.background,
+                    text = "Это отличный пост, спасибо за информацию!",
+                    date = "2 часа назад",
+                    likesCount = 15
+                ),
+                Comment(
+                    id = 2,
+                    username = "developer42",
+                    avatarRes = R.drawable.background,
+                    text = "Интересная точка зрения, я бы добавил ещё несколько деталей.",
+                    date = "5 часов назад",
+                    likesCount = 8
+                ),
+                Comment(
+                    id = 3,
+                    username = "design_lover",
+                    avatarRes = R.drawable.background,
+                    text = "Очень красивое оформление!",
+                    date = "Вчера",
+                    likesCount = 23
+                )
+            )
+        )
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
+    ) {
+        items(comments) { comment ->
+            CommentItem(
+                comment = comment,
+                onLikeClick = {
+                    comments = comments.map {
+                        if (it.id == comment.id) {
+                            it.copy(
+                                isLiked = !it.isLiked,
+                                likesCount = if (!it.isLiked) it.likesCount + 1 else it.likesCount - 1
+                            )
+                        } else {
+                            it
+                        }
+                    }
+                }
+            )
+            Spacer(modifier = Modifier.padding(8.dp))
+        }
+    }
+}
+
+@Composable
+fun CommentItem(comment: Comment, onLikeClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium)
+            .padding(12.dp)
+    ) {
+        // Верхняя часть с аватаркой и именем пользователя
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Image(
+                painter = painterResource(id = comment.avatarRes),
+                contentDescription = "Аватар пользователя ${comment.username}",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+            )
+
+            Column(
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Text(
+                    text = comment.username,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = comment.date,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        // Текст комментария
+        Text(
+            text = comment.text,
+            modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+            fontSize = 14.sp
+        )
+
+        // Кнопка лайка
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start,
+            modifier = Modifier.clickable { onLikeClick() }
+        ) {
+            Icon(
+                imageVector = if (comment.isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                contentDescription = "Лайк",
+                tint = if (comment.isLiked) Color.Red else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.padding(4.dp))
+            Text(
+                text = comment.likesCount.toString(),
+                fontSize = 14.sp,
+                color = if (comment.isLiked) Color.Red else MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+*/
+
 

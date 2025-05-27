@@ -2,7 +2,6 @@ package com.example.testapp.ui.viewmodels
 
 import android.content.SharedPreferences
 import android.util.Log
-import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testapp.domain.models.BaseReport
@@ -11,16 +10,17 @@ import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Field
 import com.example.testapp.domain.models.Layer
 import com.example.testapp.domain.models.ReportPhoto
-import com.example.testapp.domain.models.ReportType
 import com.example.testapp.domain.models.ReportTypeEnum
 import com.example.testapp.domain.models.Well
 import com.example.testapp.domain.usecases.GetBlenderPhotos
 import com.example.testapp.domain.usecases.GetBlenderReports
 import com.example.testapp.domain.usecases.GetCustomers
+import com.example.testapp.domain.usecases.GetEngineerReports
 import com.example.testapp.domain.usecases.GetFields
 import com.example.testapp.domain.usecases.GetLayers
 import com.example.testapp.domain.usecases.GetSupervisorReports
 import com.example.testapp.domain.usecases.GetWells
+import com.example.testapp.domain.usecases.UploadEngineerSignatureBlenderReport
 import com.example.testapp.domain.usecases.UploadSupervisorSignatureBlenderReport
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -38,11 +38,13 @@ class SupervisorReportsViewModel @Inject constructor(
     private val getBlenderReports: GetBlenderReports,
     private val getBlenderPhotos: GetBlenderPhotos,
     private val getSupervisorReports: GetSupervisorReports,
+    private val getEngineerReports: GetEngineerReports,
     private val getFields: GetFields,
     private val getWells: GetWells,
     private val getLayers: GetLayers,
     private val getCustomers: GetCustomers,
     private val uploadSupervisorSignatureBlenderReport: UploadSupervisorSignatureBlenderReport,
+    private val uploadEngineerSignatureBlenderReport: UploadEngineerSignatureBlenderReport,
     private val sharedPreferences: SharedPreferences,
 ) : ViewModel() {
 
@@ -61,6 +63,10 @@ class SupervisorReportsViewModel @Inject constructor(
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+   init {
+        loadReports()
+    }
 
     fun loadReports() {
         viewModelScope.launch {
@@ -98,6 +104,25 @@ class SupervisorReportsViewModel @Inject constructor(
         viewModelScope.launch {
             val urlSupervisorSignature = uploadSupervisorSignatureBlenderReport(reportId, reportType, signatureFile)
             if (urlSupervisorSignature != null) {
+                onResult(true)
+            } else {
+                onResult(false)
+            }
+        }
+
+
+    }
+
+
+    fun uploadEngineerSignature(
+        reportId: Int,
+        reportType: ReportTypeEnum,
+        signatureFile: File,
+        onResult: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            val urlEngineerSignature = uploadEngineerSignatureBlenderReport(reportId, reportType, signatureFile)
+            if (urlEngineerSignature != null) {
                 onResult(true)
             } else {
                 onResult(false)

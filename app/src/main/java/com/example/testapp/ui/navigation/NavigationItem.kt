@@ -43,4 +43,10 @@ sealed class NavigationItem(
         screen = Screen.SupervisorSettings,
         icon = Icons.Filled.Settings
     )
+
+
+    object EngineerCurrentReports: NavigationItem(
+        screen = Screen.EngineerCurrentReports,
+        icon = Icons.Filled.Home
+    )
 }

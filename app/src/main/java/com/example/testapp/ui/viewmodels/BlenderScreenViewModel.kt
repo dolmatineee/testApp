@@ -21,6 +21,7 @@ import com.example.testapp.domain.usecases.GetLayers
 import com.example.testapp.domain.usecases.GetWells
 import com.example.testapp.domain.usecases.InsertBlenderReport
 import com.example.testapp.domain.usecases.InsertPhotoReport
+import com.example.testapp.utils.generateBlenderReport
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -114,11 +115,24 @@ class BlenderScreenViewModel @Inject constructor(
         _isSuccess.value = false
     }
 
-    suspend fun saveReportAndGetId(report: BlenderReport, blenderReportCode: String): Int? {
+    suspend fun saveReportAndGetId(
+        report: BlenderReport,
+        blenderReportCode: String,
+        context: Context
+    ): Int? {
+
+        val file =  generateBlenderReport(
+            customer = selectedCustomer.value!!,
+            field = selectedField.value!!,
+            layer = selectedLayer.value!!,
+            well = selectedWell.value!!,
+            testAttemptsMap = testAttempts.value,
+            photos = photosForReagents.value.values.flatten(),
+            context = context
+        )
         return withContext(Dispatchers.IO) {
             try {
-                _isLoading.value = true
-                insertBlenderReport.invoke(report, blenderReportCode)
+                insertBlenderReport.invoke(report, blenderReportCode, file, context)
             } catch (e: Exception) {
                 null
             }
@@ -139,7 +153,10 @@ class BlenderScreenViewModel @Inject constructor(
     suspend fun getReagentIdByName(reagentName: String): Int? {
         return withContext(Dispatchers.IO) {
             try {
-                getReagentIdByName.invoke(reagentName)
+                _isLoading.value = true
+                val id = getReagentIdByName.invoke(reagentName)
+                Log.e("FHGFHFGHD", id.toString())
+                id
             } catch (e: Exception) {
                 null
             }

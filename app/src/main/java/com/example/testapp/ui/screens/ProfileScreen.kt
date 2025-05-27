@@ -133,6 +133,7 @@ fun ProfileScreen(
                     fullName = fullName,
                     position = position
                 )
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
 

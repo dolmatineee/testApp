@@ -17,6 +17,7 @@ import com.example.testapp.domain.models.BlenderReportTestDetail
 import com.example.testapp.domain.models.GelReport
 import com.example.testapp.domain.models.ReportFilters
 import com.example.testapp.domain.models.ReportPhoto
+import com.example.testapp.domain.models.ReportStatus
 import com.example.testapp.domain.models.ReportType
 import com.example.testapp.domain.models.ReportTypeEnum
 import com.example.testapp.domain.models.Well
@@ -30,6 +31,7 @@ import com.example.testapp.domain.repositories.PhotoRepository
 import com.example.testapp.domain.repositories.ReportBlenderRepository
 import com.example.testapp.domain.repositories.ReportRepository
 import com.example.testapp.domain.repositories.ReportTypeRepository
+import com.example.testapp.domain.repositories.StatusRepository
 import com.example.testapp.domain.repositories.WellRepository
 import com.example.testapp.remote.models.AcidReportDto
 import com.example.testapp.remote.models.AcidReportSignatureLinkDto
@@ -49,6 +51,7 @@ import com.example.testapp.remote.models.BlenderReportTestDetailDto
 import com.example.testapp.remote.models.GelReportDto
 import com.example.testapp.remote.models.GelReportSignatureLinkDto
 import com.example.testapp.remote.models.ReportDto
+import com.example.testapp.remote.models.ReportForStatusDto
 import com.example.testapp.remote.models.ReportSignatureDto
 import com.example.testapp.remote.models.ReportStatusDto
 import com.example.testapp.remote.models.ReportTypeDto
@@ -88,6 +91,34 @@ class FieldRepositoryImpl @Inject constructor(
                 }
                 .decodeSingleOrNull<FieldDto>()
             fieldDto?.toDomain()
+        }
+    }
+}
+
+class StatusRepositoryImpl @Inject constructor(
+    private val postgrest: Postgrest
+) : StatusRepository {
+
+    override suspend fun getStatuses(): List<ReportStatus> {
+        return withContext(Dispatchers.IO) {
+            val reportStatusesDto = postgrest.from("report_statuses")
+                .select()
+                .decodeList<ReportStatusDto>()
+            Log.e("FieldRepositoryImpl", reportStatusesDto.toString())
+            reportStatusesDto.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun getStatusById(id: Int): ReportStatus? {
+        return withContext(Dispatchers.IO) {
+            val reportStatusDto = postgrest.from("report_statuses")
+                .select {
+                    filter {
+                        eq("id", id)
+                    }
+                }
+                .decodeSingleOrNull<ReportStatusDto>()
+            reportStatusDto?.toDomain()
         }
     }
 }
@@ -187,8 +218,6 @@ class ReportTypeRepositoryImpl @Inject constructor(
 }
 
 
-
-
 class EmployeeRepositoryImpl @Inject constructor(
     private val postgrest: Postgrest
 ) : EmployeeRepository {
@@ -198,7 +227,13 @@ class EmployeeRepositoryImpl @Inject constructor(
 
             val query = postgrest.from("employees")
                 .select(
-                    Columns.list("id", "full_name", "phone_number", "password", "positions(position_name)")
+                    Columns.list(
+                        "id",
+                        "full_name",
+                        "phone_number",
+                        "password",
+                        "positions(position_name)"
+                    )
                 ) {
                     filter {
                         eq("phone_number", phoneNumber)
@@ -213,7 +248,6 @@ class EmployeeRepositoryImpl @Inject constructor(
             employeeDtoList.firstOrNull()?.toDomain()
         }
     }
-
 
 
     override suspend fun getEmployeeIdByPhone(phoneNumber: String): Int? {
@@ -260,11 +294,22 @@ class ReportBlenderRepositoryImpl @Inject constructor(
 
     override suspend fun insertReportBlender(
         report: BlenderReport,
-        blenderReportCode: String
+        blenderReportCode: String,
+        reportFile: File,
+        context: Context
     ): Int? {
         return withContext(Dispatchers.IO) {
-
             try {
+                // 1. Загружаем файл в Supabase Storage
+                val fileName = "blender_report_${System.currentTimeMillis()}_${reportFile.name}"
+                val fileBytes = reportFile.readBytes()
+
+                storage.from("reports").upload(fileName, fileBytes, upsert = false)
+
+                // Получаем публичный URL файла
+                val fileUrl = storage.from("reports").publicUrl(fileName)
+
+                // 2. Создаем и вставляем отчет с URL файла
                 val reportDto = BlenderReportDto(
                     employee_id = report.employeeId,
                     field_id = report.fieldId,
@@ -272,21 +317,22 @@ class ReportBlenderRepositoryImpl @Inject constructor(
                     layer_id = report.layerId,
                     customer_id = report.customerId,
                     report_name = report.reportName,
-                    code = report.code
+                    code = report.code,
+                    file_url = fileUrl, // сохраняем URL файла
+                    status = null
                 )
 
                 postgrest.from("blender_reports").insert(reportDto)
 
-
+                // 3. Получаем ID вставленного отчета
                 val insertedReport = postgrest.from("blender_reports")
                     .select {
                         filter {
                             eq("code", blenderReportCode)
                         }
                     }.decodeSingle<BlenderReportDto>()
-                val reportId = insertedReport.id
 
-                reportId
+                insertedReport.id
             } catch (e: Exception) {
                 Log.e("ReportBlenderRepo", "Error inserting report", e)
                 null
@@ -330,75 +376,146 @@ class ReportBlenderRepositoryImpl @Inject constructor(
                         eq("name", reagentName)
                     }
                 }.decodeSingleOrNull<ReagentDto>()
+            Log.e("reagent", reagent.toString())
             reagent?.id
         }
     }
 
     override suspend fun getSupervisorReports(): List<BaseReport> {
         return withContext(Dispatchers.IO) {
+            try {
+                // 1. Получаем все отчеты всех типов
+                val reports = getBlenderReports() + getAcidReports() + getGelReports()
+                if (reports.isEmpty()) return@withContext emptyList()
 
-            val reportsWithStatus2 = mutableListOf<BaseReport>()
+                // 2. Получаем ID всех отчетов
+                val reportIds = reports.mapNotNull { it.id }
 
+                // 3. Получаем все связи отчетов с подписями
+                val signatureLinks = listOf(
+                    postgrest.from("blender_report_signatures")
+                        .select(Columns.ALL) {
+                            filter { isIn("report_id", reportIds) }
+                        }.decodeList<ReportSignatureDto>(),
 
-            ReportTypeEnum.entries.forEach { type ->
-                val tableName = when (type) {
-                    ReportTypeEnum.BLENDER -> "blender_report_signatures"
-                    ReportTypeEnum.ACID -> "acid_report_signatures"
-                    ReportTypeEnum.GEL -> "gel_report_signatures"
-                }
+                    postgrest.from("acid_report_signatures")
+                        .select(Columns.ALL) {
+                            filter { isIn("report_id", reportIds) }
+                        }.decodeList<ReportSignatureDto>(),
 
-                // Находим signature_id с status_id = 2
-                val signatureIds = postgrest.from("reports")
-                    .select(Columns.raw("id")) {
-                        filter { eq("status_id", 2) }
-                    }
-                    .decodeList<Map<String, Int>>()
-                    .map { it["id"]!! }
+                    postgrest.from("gel_report_signatures")
+                        .select(Columns.ALL) {
+                            filter { isIn("report_id", reportIds) }
+                        }.decodeList<ReportSignatureDto>()
+                ).flatten()
 
-                if (signatureIds.isNotEmpty()) {
-                    // Получаем report_id для этих signature_id
-                    val reportIds = postgrest.from(tableName)
-                        .select(Columns.raw("report_id")) {
-                            filter { isIn("signature_id", signatureIds) }
-                        }
-                        .decodeList<Map<String, Int>>()
-                        .map { it["report_id"]!! }
+                if (signatureLinks.isEmpty()) return@withContext emptyList()
 
-                    // Получаем сами отчеты
-                    val reports = when (type) {
-                        ReportTypeEnum.BLENDER -> {
-                            postgrest.from("blender_reports")
-                                .select(Columns.ALL) {
-                                    filter { isIn("id", reportIds) }
-                                }
-                                .decodeList<BlenderReportDto>()
-                                .map { it.toDomain() }
-                        }
-                        ReportTypeEnum.ACID -> {
-                            postgrest.from("acid_reports")
-                                .select(Columns.ALL) {
-                                    filter { isIn("id", reportIds) }
-                                }
-                                .decodeList<AcidReportDto>()
-                                .map { it.toDomain() }
-                        }
-                        ReportTypeEnum.GEL -> {
-                            postgrest.from("gel_reports")
-                                .select(Columns.ALL) {
-                                    filter { isIn("id", reportIds) }
-                                }
-                                .decodeList<GelReportDto>()
-                                .map { it.toDomain() }
+                // 4. Получаем только подписи с status_id = 1
+                val signatureIds = signatureLinks.map { it.signature_id }
+                val approvedSignatures = postgrest.from("reports")
+                    .select(Columns.ALL) {
+                        filter {
+                            and {
+                                isIn("id", signatureIds)
+                                eq("status_id", 1)
+                            }
                         }
                     }
+                    .decodeList<ReportDto>()
+                    .map { it.id }
 
-                    reportsWithStatus2.addAll(reports)
-                }
+                // 5. Фильтруем отчеты - оставляем только те, у которых подпись с status_id = 1
+                reports.filter { report ->
+                    signatureLinks.any { link ->
+                        link.report_id == report.id && approvedSignatures.contains(link.signature_id)
+                    }
+                }.sortedByDescending { it.createdAt }
+            } catch (e: Exception) {
+                Log.e("getSupervisorReports", "Error fetching reports", e)
+                emptyList()
             }
-
-            reportsWithStatus2.sortedByDescending { it.createdAt }
         }
     }
+
+    override suspend fun getEngineerReports(): List<BaseReport> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1. Получаем все отчеты всех типов
+                val reports = getBlenderReports() + getAcidReports() + getGelReports()
+                if (reports.isEmpty()) return@withContext emptyList()
+
+                // 2. Получаем ID всех отчетов
+                val reportIds = reports.mapNotNull { it.id }
+
+                // 3. Получаем все связи отчетов с подписями
+                val signatureLinks = listOf(
+                    postgrest.from("blender_report_signatures")
+                        .select(Columns.ALL) {
+                            filter { isIn("report_id", reportIds) }
+                        }.decodeList<ReportSignatureDto>(),
+
+                    postgrest.from("acid_report_signatures")
+                        .select(Columns.ALL) {
+                            filter { isIn("report_id", reportIds) }
+                        }.decodeList<ReportSignatureDto>(),
+
+                    postgrest.from("gel_report_signatures")
+                        .select(Columns.ALL) {
+                            filter { isIn("report_id", reportIds) }
+                        }.decodeList<ReportSignatureDto>()
+                ).flatten()
+
+                if (signatureLinks.isEmpty()) return@withContext emptyList()
+
+                // 4. Получаем только подписи с status_id = 1
+                val signatureIds = signatureLinks.map { it.signature_id }
+                val approvedSignatures = postgrest.from("reports")
+                    .select(Columns.ALL) {
+                        filter {
+                            and {
+                                isIn("id", signatureIds)
+                                eq("status_id", 2)
+                            }
+                        }
+                    }
+                    .decodeList<ReportDto>()
+                    .map { it.id }
+
+                // 5. Фильтруем отчеты - оставляем только те, у которых подпись с status_id = 1
+                reports.filter { report ->
+                    signatureLinks.any { link ->
+                        link.report_id == report.id && approvedSignatures.contains(link.signature_id)
+                    }
+                }.sortedByDescending { it.createdAt }
+            } catch (e: Exception) {
+                Log.e("getSupervisorReports", "Error fetching reports", e)
+                emptyList()
+            }
+        }
+    }
+
+    private suspend fun getBlenderReports(): List<BaseReport> {
+        return postgrest.from("blender_reports")
+            .select(Columns.ALL)
+            .decodeList<BlenderReportDto>()
+            .map { it.toDomain() }
+    }
+
+    private suspend fun getAcidReports(): List<BaseReport> {
+        return postgrest.from("acid_reports")
+            .select(Columns.ALL)
+            .decodeList<AcidReportDto>()
+            .map { it.toDomain() }
+    }
+
+    private suspend fun getGelReports(): List<BaseReport> {
+        return postgrest.from("gel_reports")
+            .select(Columns.ALL)
+            .decodeList<GelReportDto>()
+            .map { it.toDomain() }
+    }
+
     override suspend fun getBlenderReportsSupervisor(): List<BlenderReport> {
         return withContext(Dispatchers.IO) {
 
@@ -437,9 +554,7 @@ class ReportBlenderRepositoryImpl @Inject constructor(
 
 
                 val domainReport = blenderReport.toDomain(
-                    reagents = reagentsWithTests,
-                    supervisorSignatureUrl = reportSignature?.supervisor_signature_url,
-                    engineerSignatureUrl = reportSignature?.engineer_signature_url,
+                    reagents = reagentsWithTests
                 )
 
 
@@ -451,7 +566,11 @@ class ReportBlenderRepositoryImpl @Inject constructor(
             }
         }
     }
-    override suspend fun getReportPhotos(reportId: Int, reportType: ReportTypeEnum): List<ReportPhoto> {
+
+    override suspend fun getReportPhotos(
+        reportId: Int,
+        reportType: ReportTypeEnum
+    ): List<ReportPhoto> {
         return withContext(Dispatchers.IO) {
             try {
 
@@ -518,6 +637,48 @@ class ReportBlenderRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun uploadEngineerSignature(
+        reportId: Int,
+        reportType: ReportTypeEnum,
+        signatureFile: File
+    ): String? {
+
+        return withContext(Dispatchers.IO) {
+            try {
+                // Определяем таблицу связей в зависимости от типа отчета
+                val signatureTable = when (reportType) {
+                    ReportTypeEnum.BLENDER -> "blender_report_signatures"
+                    ReportTypeEnum.ACID -> "acid_report_signatures"
+                    ReportTypeEnum.GEL -> "gel_report_signatures"
+                }
+
+                // Получаем ID подписи
+                val signatureLink = postgrest.from(signatureTable)
+                    .select {
+                        filter { eq("report_id", reportId) }
+                    }.decodeSingle<Map<String, Int>>()
+
+                val signatureId = signatureLink["signature_id"] ?: return@withContext null
+
+                // Загружаем файл подписи
+                val path = "engineer_${signatureId}_${reportType.name.lowercase()}.png"
+                storage.from("signatures").upload(path, signatureFile.readBytes(), upsert = false)
+                val url = storage.from("signatures").publicUrl(path)
+
+                // Обновляем запись в таблице reports
+                postgrest.from("reports").update({
+                    set("engineer_signature_url", url)
+                }) {
+                    filter { eq("id", signatureId) }
+                }
+
+                url
+            } catch (e: Exception) {
+                Log.e("ReportRepository", "Error uploading supervisor signature", e)
+                null
+            }
+        }
+    }
 
     private suspend fun getReagentsWithTests(reportId: Int): List<Reagent> {
         return withContext(Dispatchers.IO) {
@@ -569,6 +730,7 @@ class ReportBlenderRepositoryImpl @Inject constructor(
     }
 
 }
+
 class ReportRepositoryImpl @Inject constructor(
     private val postgrest: Postgrest,
     private val storage: Storage,
@@ -593,8 +755,7 @@ class ReportRepositoryImpl @Inject constructor(
                 reports.mapNotNull { it.id }
             }
 
-            // 5. Получаем все signature_id для отчетов каждого типа
-            val signatureIds = reportIdsByType.mapValues { (type, ids) ->
+            reportIdsByType.mapValues { (type, ids) ->
                 if (ids.isEmpty()) return@mapValues emptyMap<Int, Int>()
 
                 val tableName = when (type) {
@@ -611,54 +772,38 @@ class ReportRepositoryImpl @Inject constructor(
                     .associate { it.report_id to it.signature_id }
             }
 
-            // 6. Получаем статусы для всех signature_id
-            val allSignatureIds = signatureIds.values.flatMap { it.values }
-            val statuses = if (allSignatureIds.isNotEmpty()) {
-                postgrest.from("reports")
-                    .select(Columns.list("id, status_id")) {
-                        filter { isIn("id", allSignatureIds) }
-                    }
-                    .decodeList<ReportStatusDto>()
-                    .associate { it.id to it.status_id }
-            } else {
-                emptyMap()
-            }
-
-            // 7. Фильтруем отчеты по статусу 3
-            reports.filter { report ->
-                val signatureId = signatureIds[report.reportType]?.get(report.id ?: -1)
-                signatureId?.let { statuses[it] == 3 } ?: false
-            }.sortedByDescending { it.createdAt }
+            reports.sortedByDescending { it.createdAt }
         }
     }
 
     private suspend fun getBlenderReports(filters: ReportFilters): List<BlenderReport> {
-        return postgrest.from("blender_reports")
-            .select(Columns.ALL) {
+        // 1. Получаем основные данные отчетов с фильтрацией
+        val blenderReports = postgrest.from("blender_reports")
+            .select(Columns.list(
+                "id",
+                "employee_id",
+                "field_id",
+                "well_id",
+                "layer_id",
+                "customer_id",
+                "file_url",
+                "created_at",
+                "report_name",
+                "code"
+            )) {
+                // Применяем фильтры
                 if (filters.fields.isNotEmpty()) {
-                    filter {
-                        isIn("field_id", filters.fields.map { it.id!! })
-                    }
+                    filter { isIn("field_id", filters.fields.map { it.id!! }) }
                 }
-
                 if (filters.wells.isNotEmpty()) {
-                    filter {
-                        isIn("well_id", filters.wells.map { it.id!! })
-                    }
+                    filter { isIn("well_id", filters.wells.map { it.id!! }) }
                 }
-
                 if (filters.layers.isNotEmpty()) {
-                    filter {
-                        isIn("layer_id", filters.layers.map { it.id!! })
-                    }
+                    filter { isIn("layer_id", filters.layers.map { it.id!! }) }
                 }
-
                 if (filters.customers.isNotEmpty()) {
-                    filter {
-                        isIn("customer_id", filters.customers.map { it.id!! })
-                    }
+                    filter { isIn("customer_id", filters.customers.map { it.id!! }) }
                 }
-
                 if (filters.dateRange != null) {
                     filter {
                         and {
@@ -669,36 +814,100 @@ class ReportRepositoryImpl @Inject constructor(
                 }
             }
             .decodeList<BlenderReportDto>()
-            .map { it.toDomain() }
+
+        if (blenderReports.isEmpty()) return emptyList()
+
+        // 2. Получаем ID отчетов для запроса подписей
+        val reportIds = blenderReports.mapNotNull { it.id }
+
+        // 3. Получаем связи отчетов с подписями
+        val signaturesQuery = postgrest.from("blender_report_signatures")
+            .select(Columns.list("report_id", "signature_id")) {
+                filter { isIn("report_id", reportIds) }
+                if (filters.status != null) {
+                    filter {
+                        eq("reports.status_id", filters.status.id!!)
+                    }
+
+                }
+            }
+        val signatures = signaturesQuery.decodeList<BlenderReportSignatureLinkDto>()
+
+        // 4. Получаем данные подписей
+        val signatureIds = signatures.map { it.signature_id }
+        val reportsData = if (signatureIds.isNotEmpty()) {
+            postgrest.from("reports")
+                .select(Columns.list(
+                    "id",
+                    "status_id",
+                    "supervisor_signature_url",
+                    "engineer_signature_url"
+                )) {
+                    filter { isIn("id", signatureIds) }
+                }
+                .decodeList<ReportDto>()
+        } else {
+            emptyList()
+        }
+
+        // 5. Получаем статусы
+        val statusIds = reportsData.mapNotNull { it.status_id }.distinct()
+        val statuses = if (statusIds.isNotEmpty()) {
+            postgrest.from("report_statuses")
+                .select(Columns.list("id", "status_name")) {
+                    filter { isIn("id", statusIds) }
+                }
+                .decodeList<ReportStatusDto>()
+        } else {
+            emptyList()
+        }
+
+        // 6. Собираем результат
+        return blenderReports.map { report ->
+            val signatureLink = signatures.find { it.report_id == report.id }
+            val reportData = reportsData.find { it.id == signatureLink?.signature_id }
+            val status = statuses.find { it.id == reportData?.status_id }
+            Log.e("dfgfdgdfgfg", status.toString())
+            report.toDomain().copy(
+                status = status?.statusName,
+                supervisor_signature_url = reportData?.supervisor_signature_url,
+                engineer_signature_url = reportData?.engineer_signature_url
+            )
+
+        }
     }
 
     private suspend fun getAcidReports(filters: ReportFilters): List<AcidReport> {
-        return postgrest.from("acid_reports")
-            .select(Columns.ALL) {
+        // 1. Получаем основные данные отчетов с фильтрацией
+        val acidReports = postgrest.from("acid_reports")
+            .select(Columns.list(
+                "id",
+                "employee_id",
+                "field_id",
+                "well_id",
+                "layer_id",
+                "customer_id",
+                "file_url",
+                "created_at",
+                "report_name",
+                "code",
+                "lab_technician_id",
+                "concentrated_acid_percentage",
+                "prepared_acid_percentage"
+            )) {
+                // Применяем фильтры
                 if (filters.fields.isNotEmpty()) {
-                    filter {
-                        isIn("field_id", filters.fields.map { it.id!! })
-                    }
+                    filter { isIn("field_id", filters.fields.map { it.id!! }) }
                 }
-
                 if (filters.wells.isNotEmpty()) {
-                    filter {
-                        isIn("well_id", filters.wells.map { it.id!! })
-                    }
+                    filter { isIn("well_id", filters.wells.map { it.id!! }) }
                 }
-
                 if (filters.layers.isNotEmpty()) {
-                    filter {
-                        isIn("layer_id", filters.layers.map { it.id!! })
-                    }
+                    filter { isIn("layer_id", filters.layers.map { it.id!! }) }
                 }
-
                 if (filters.customers.isNotEmpty()) {
-                    filter {
-                        isIn("customer_id", filters.customers.map { it.id!! })
-                    }
+                    filter { isIn("customer_id", filters.customers.map { it.id!! }) }
                 }
-
                 if (filters.dateRange != null) {
                     filter {
                         and {
@@ -709,36 +918,95 @@ class ReportRepositoryImpl @Inject constructor(
                 }
             }
             .decodeList<AcidReportDto>()
-            .map { it.toDomain() }
+
+        if (acidReports.isEmpty()) return emptyList()
+
+        // 2. Получаем ID отчетов для запроса подписей
+        val reportIds = acidReports.mapNotNull { it.id }
+
+        // 3. Получаем связи отчетов с подписями
+        val signaturesQuery = postgrest.from("acid_report_signatures")
+            .select(Columns.list("report_id", "signature_id")) {
+                filter { isIn("report_id", reportIds) }
+                if (filters.status != null) {
+                    filter {
+                        eq("reports.status_id", filters.status.id!!)
+                    }
+                }
+            }
+        val signatures = signaturesQuery.decodeList<AcidReportSignatureLinkDto>()
+
+        // 4. Получаем данные подписей
+        val signatureIds = signatures.map { it.signatureId }
+        val reportsData = if (signatureIds.isNotEmpty()) {
+            postgrest.from("reports")
+                .select(Columns.list(
+                    "id",
+                    "status_id",
+                    "supervisor_signature_url",
+                    "engineer_signature_url"
+                )) {
+                    filter { isIn("id", signatureIds) }
+                }
+                .decodeList<ReportDto>()
+        } else {
+            emptyList()
+        }
+
+        // 5. Получаем статусы
+        val statusIds = reportsData.mapNotNull { it.status_id }.distinct()
+        val statuses = if (statusIds.isNotEmpty()) {
+            postgrest.from("report_statuses")
+                .select(Columns.list("id", "status_name")) {
+                    filter { isIn("id", statusIds) }
+                }
+                .decodeList<ReportStatusDto>()
+        } else {
+            emptyList()
+        }
+
+        // 6. Собираем результат
+        return acidReports.map { report ->
+            val signatureLink = signatures.find { it.reportId == report.id }
+            val reportData = reportsData.find { it.id == signatureLink?.signatureId }
+            val status = statuses.find { it.id == reportData?.status_id }
+
+            report.toDomain().copy(
+                status = status?.statusName,
+                supervisor_signature_url = reportData?.supervisor_signature_url,
+                engineer_signature_url = reportData?.engineer_signature_url
+            )
+        }
     }
 
     private suspend fun getGelReports(filters: ReportFilters): List<GelReport> {
-        return postgrest.from("gel_reports")
-            .select(Columns.ALL) {
+        // 1. Получаем основные данные отчетов с фильтрацией
+        val gelReports = postgrest.from("gel_reports")
+            .select(Columns.list(
+                "id",
+                "employee_id",
+                "field_id",
+                "well_id",
+                "layer_id",
+                "customer_id",
+                "file_url",
+                "created_at",
+                "report_name",
+                "code"
+            )) {
+                // Применяем фильтры
                 if (filters.fields.isNotEmpty()) {
-                    filter {
-                        isIn("field_id", filters.fields.map { it.id!! })
-                    }
+                    filter { isIn("field_id", filters.fields.map { it.id!! }) }
                 }
-
                 if (filters.wells.isNotEmpty()) {
-                    filter {
-                        isIn("well_id", filters.wells.map { it.id!! })
-                    }
+                    filter { isIn("well_id", filters.wells.map { it.id!! }) }
                 }
-
                 if (filters.layers.isNotEmpty()) {
-                    filter {
-                        isIn("layer_id", filters.layers.map { it.id!! })
-                    }
+                    filter { isIn("layer_id", filters.layers.map { it.id!! }) }
                 }
-
                 if (filters.customers.isNotEmpty()) {
-                    filter {
-                        isIn("customer_id", filters.customers.map { it.id!! })
-                    }
+                    filter { isIn("customer_id", filters.customers.map { it.id!! }) }
                 }
-
                 if (filters.dateRange != null) {
                     filter {
                         and {
@@ -749,7 +1017,65 @@ class ReportRepositoryImpl @Inject constructor(
                 }
             }
             .decodeList<GelReportDto>()
-            .map { it.toDomain() }
+
+        if (gelReports.isEmpty()) return emptyList()
+
+        // 2. Получаем ID отчетов для запроса подписей
+        val reportIds = gelReports.mapNotNull { it.id }
+
+        // 3. Получаем связи отчетов с подписями
+        val signaturesQuery = postgrest.from("gel_report_signatures")
+            .select(Columns.list("report_id", "signature_id")) {
+                filter { isIn("report_id", reportIds) }
+                if (filters.status != null) {
+                    filter {
+                        eq("reports.status_id", filters.status.id!!)
+                    }
+                }
+            }
+        val signatures = signaturesQuery.decodeList<GelReportSignatureLinkDto>()
+
+        // 4. Получаем данные подписей
+        val signatureIds = signatures.map { it.signatureId }
+        val reportsData = if (signatureIds.isNotEmpty()) {
+            postgrest.from("reports")
+                .select(Columns.list(
+                    "id",
+                    "status_id",
+                    "supervisor_signature_url",
+                    "engineer_signature_url"
+                )) {
+                    filter { isIn("id", signatureIds) }
+                }
+                .decodeList<ReportDto>()
+        } else {
+            emptyList()
+        }
+
+        // 5. Получаем статусы
+        val statusIds = reportsData.mapNotNull { it.status_id }.distinct()
+        val statuses = if (statusIds.isNotEmpty()) {
+            postgrest.from("report_statuses")
+                .select(Columns.list("id", "status_name")) {
+                    filter { isIn("id", statusIds) }
+                }
+                .decodeList<ReportStatusDto>()
+        } else {
+            emptyList()
+        }
+
+        // 6. Собираем результат
+        return gelReports.map { report ->
+            val signatureLink = signatures.find { it.reportId == report.id }
+            val reportData = reportsData.find { it.id == signatureLink?.signatureId }
+            val status = statuses.find { it.id == reportData?.status_id }
+
+            report.toDomain().copy(
+                status = status?.statusName,
+                supervisor_signature_url = reportData?.supervisor_signature_url,
+                engineer_signature_url = reportData?.engineer_signature_url
+            )
+        }
     }
 
 }
@@ -771,7 +1097,8 @@ class PhotoRepositoryImpl @Inject constructor(
             val photoType = getOrCreatePhotoType(photoTypeName)
 
             // 2. Генерируем уникальное имя файла с учетом попытки
-            val fileName = "${photoTypeName.sanitizeFileName()}_attempt${attemptNumber}_${System.currentTimeMillis()}.jpg"
+            val fileName =
+                "${photoTypeName.sanitizeFileName()}_attempt${attemptNumber}_${System.currentTimeMillis()}.jpg"
 
             // 3. Загружаем файл в хранилище
             storage.from("photos")
@@ -799,7 +1126,7 @@ class PhotoRepositoryImpl @Inject constructor(
 
     private suspend fun getOrCreatePhotoType(name: String): PhotoTypeDto {
         val existingType = postgrest.from("photo_types")
-            .select { filter { eq("name", name) } }
+            .select { filter { eq("statusName", name) } }
             .decodeSingle<PhotoTypeDto>()
         return existingType
     }
@@ -821,10 +1148,21 @@ class AcidReportRepositoryImpl @Inject constructor(
     override suspend fun saveReportAndGetId(
         report: AcidReport,
         acidReportCode: String,
-        photos: Map<PhotoType, Uri>
+        photos: Map<PhotoType, Uri>,
+        reportFile: File,
+        context: Context
     ): Int? {
         return withContext(Dispatchers.IO) {
             try {
+                // 1. Загружаем файл в Supabase Storage
+                val fileName = "acid_report_${System.currentTimeMillis()}_${reportFile.name}"
+                val fileBytes = reportFile.readBytes()
+
+                storage.from("reports").upload(fileName, fileBytes, upsert = false)
+
+                // Получаем публичный URL файла
+                val fileUrl = storage.from("reports").publicUrl(fileName)
+
                 val reportDto = AcidReportDto(
                     employeeId = report.employeeId,
                     labTechnicianId = report.labTechnicianId,
@@ -835,7 +1173,9 @@ class AcidReportRepositoryImpl @Inject constructor(
                     reportName = report.reportName,
                     code = report.code,
                     concentratedAcidPercentage = report.concentratedAcidPercentage,
-                    preparedAcidPercentage = report.preparedAcidPercentage
+                    preparedAcidPercentage = report.preparedAcidPercentage,
+                    status = null,
+                    fileUrl = fileUrl,
                 )
 
                 postgrest.from("acid_reports").insert(reportDto)
@@ -886,7 +1226,8 @@ class AcidReportRepositoryImpl @Inject constructor(
                 val file = photoUri.toFile(context = context)
 
                 // 3. Генерируем имя файла
-                val fileName = "acid_${reportId}_${photoType.name.lowercase()}_${System.currentTimeMillis()}.jpg"
+                val fileName =
+                    "acid_${reportId}_${photoType.name.lowercase()}_${System.currentTimeMillis()}.jpg"
 
                 // 4. Загружаем в хранилище
                 storage.from("photos").upload(fileName, file.readBytes(), upsert = false)
@@ -922,6 +1263,7 @@ class AcidReportRepositoryImpl @Inject constructor(
             }
         }
     }
+
     private fun getPhotoTypeName(photoType: PhotoType): String {
         return when (photoType) {
             PhotoType.PHOTO_5000_GENERAL -> "Фото 5000 общий"
@@ -943,7 +1285,7 @@ class AcidReportRepositoryImpl @Inject constructor(
 
     private suspend fun getOrCreatePhotoType(name: String): PhotoTypeDto {
         val existingType = postgrest.from("photo_types")
-            .select { filter { eq("name", name) } }
+            .select { filter { eq("statusName", name) } }
             .decodeSingle<PhotoTypeDto>()
         return existingType
     }
@@ -985,7 +1327,8 @@ class GelReportRepositoryImpl @Inject constructor(
                     layerId = report.layerId,
                     customerId = report.customerId,
                     reportName = report.reportName,
-                    code = report.code
+                    code = report.code,
+                    status = null
                 )
 
                 // Вставка основного отчета
@@ -1037,7 +1380,8 @@ class GelReportRepositoryImpl @Inject constructor(
                 val file = photoUri.toFile(context = context)
 
                 // 3. Генерируем имя файла
-                val fileName = "gel_${reportId}_${photoType.name.lowercase()}_${System.currentTimeMillis()}.jpg"
+                val fileName =
+                    "gel_${reportId}_${photoType.name.lowercase()}_${System.currentTimeMillis()}.jpg"
 
                 // 4. Загружаем в хранилище
                 storage.from("photos").upload(fileName, file.readBytes(), upsert = false)
@@ -1099,7 +1443,7 @@ class GelReportRepositoryImpl @Inject constructor(
 
     private suspend fun getOrCreatePhotoType(name: String): PhotoTypeDto {
         val existingType = postgrest.from("photo_types")
-            .select { filter { eq("name", name) } }
+            .select { filter { eq("statusName", name) } }
             .decodeSingle<PhotoTypeDto>()
         return existingType
     }

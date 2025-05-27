@@ -1095,14 +1095,13 @@ fun AcidScreen(
 
                             val reportId = viewModel.saveReportAndGetId(
                                 report = report,
-                                acidReportCode = uniqueCode.value
+                                acidReportCode = uniqueCode.value,
+                                context = context
                             )
 
 
                             if (reportId != null) {
                                 viewModel.setSuccessState()
-                            } else {
-
                             }
                         }
                     }

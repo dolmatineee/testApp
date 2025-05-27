@@ -88,17 +88,15 @@ fun FilterScreen(
     val selectedDateRange by viewModel.selectedDateRange.collectAsState()
     val reportTypes by viewModel.reportTypes.collectAsState()
 
-    // Initialize viewModel with initial filters
+
     LaunchedEffect(reportFilters) {
         viewModel.setFields(reportFilters.fields)
         viewModel.setWells(reportFilters.wells)
         viewModel.setLayers(reportFilters.layers)
         viewModel.setCustomers(reportFilters.customers)
         viewModel.setDateRange(reportFilters.dateRange)
-        reportFilters.reportType?.let { enumType ->
-            val reportType = reportTypes.find { it.id == enumType.id }
-            viewModel.onReportTypeSelected(reportType?.id)
-        } ?: viewModel.onReportTypeSelected(null)
+        viewModel.onReportTypeSelected(reportFilters.reportType?.id)
+
         Log.d("Filters", "Restoring report type: ${reportFilters.reportType} -> id ${reportFilters.reportType?.id}")
         Log.d("Filters", "Found report type: ${reportTypes.find { it.id == reportFilters.reportType?.id }}")
 

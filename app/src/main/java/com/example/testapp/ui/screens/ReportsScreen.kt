@@ -1,5 +1,6 @@
 package com.example.testapp.ui.screens
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,7 +21,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,10 +47,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.testapp.R
 import com.example.testapp.domain.models.BaseReport
-import com.example.testapp.domain.models.BlenderReport
 import com.example.testapp.domain.models.ReportFilters
+import com.example.testapp.domain.models.ReportStatus
 import com.example.testapp.ui.viewmodels.ReportsScreenViewModel
+import kotlinx.coroutines.flow.Flow
 
+@SuppressLint("CoroutineCreationDuringComposition")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportsScreen(
@@ -62,6 +64,8 @@ fun ReportsScreen(
     val reports by viewModel.reports.collectAsState()
 
     val isLoading by viewModel.isLoading.collectAsState()
+
+    val statuses by viewModel.statuses.collectAsState()
 
     LaunchedEffect(reportFilters) {
         viewModel.loadReports(reportFilters)
@@ -108,22 +112,6 @@ fun ReportsScreen(
         }
     ) { paddingValues ->
         when {
-            reports == null -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(horizontal = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    repeat(6) {
-
-                        ShimmerLoadingItem(180.dp, 12.dp)
-
-                    }
-                }
-            }
-
             isLoading -> {
                 Column(
                     modifier = Modifier
@@ -141,7 +129,7 @@ fun ReportsScreen(
             }
 
 
-            reports!!.isNotEmpty() -> {
+            reports.isNotEmpty() -> {
                 LazyColumn(
                     modifier = Modifier
                         .padding(paddingValues)
@@ -149,8 +137,12 @@ fun ReportsScreen(
                         .fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(reports!!) { report ->
-                        ReportItem(report = report)
+                    items(reports) { report ->
+
+                        ReportItem(
+                            report = report,
+                            reportStatus = report.status
+                        )
                     }
 
                     item {
@@ -179,7 +171,10 @@ fun ReportsScreen(
 
 
 @Composable
-fun ReportItem(report: BaseReport) {
+fun ReportItem(
+    report: BaseReport,
+    reportStatus: String?
+) {
     var isExpanded by remember { mutableStateOf(false) }
 
     Card(
@@ -207,6 +202,19 @@ fun ReportItem(report: BaseReport) {
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (reportStatus != null) {
+                        Text(
+                            text = reportStatus,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = when(reportStatus) {
+                                "Ожидается подпись супервайзера" -> MaterialTheme.colorScheme.error
+                                "Ожидается подпись инженера" -> MaterialTheme.colorScheme.errorContainer
+                                "Завершен" -> MaterialTheme.colorScheme.onError
+                                else -> {MaterialTheme.colorScheme.onBackground.copy(0.5f)}
+                            }
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
 

@@ -24,7 +24,6 @@ fun generateAcidReport(
     field: Field,
     layer: Layer,
     well: Well,
-    signatureBitmap: ImageBitmap,
     context: Context,
     photo5000General: Uri,
     photo5000AfterPour_25_75: Uri,
@@ -163,22 +162,6 @@ fun generateAcidReport(
     addPhotoToDocument(photo2000AfterPour_75_25, "Пролив 75/25")
     addPhotoToDocument(photo2000AfterPour_spent, "Пролив отраб")
 
-    // Добавляем подписи
-    val signatureParagraph = document.createParagraph()
-    signatureParagraph.alignment = ParagraphAlignment.CENTER
-
-    val byteArrayOutputStream = ByteArrayOutputStream()
-    signatureBitmap.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
-    val signatureBytes = byteArrayOutputStream.toByteArray()
-
-    val signatureRun = signatureParagraph.createRun()
-    signatureRun.addPicture(
-        ByteArrayInputStream(signatureBytes),
-        XWPFDocument.PICTURE_TYPE_PNG,
-        "signature.png",
-        Units.toEMU(120.0),
-        Units.toEMU(70.0)
-    )
 
     // Сохраняем документ во временный файл
     val file = File.createTempFile("report", ".docx", context.cacheDir)

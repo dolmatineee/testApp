@@ -1,5 +1,6 @@
 package com.example.testapp.domain.repositories
 
+import android.content.Context
 import android.net.Uri
 import com.example.testapp.domain.models.AcidReport
 import com.example.testapp.domain.models.BaseReport
@@ -13,6 +14,7 @@ import com.example.testapp.domain.models.BlenderReport
 import com.example.testapp.domain.models.GelReport
 import com.example.testapp.domain.models.ReportFilters
 import com.example.testapp.domain.models.ReportPhoto
+import com.example.testapp.domain.models.ReportStatus
 import com.example.testapp.domain.models.ReportType
 import com.example.testapp.domain.models.ReportTypeEnum
 import com.example.testapp.domain.models.Well
@@ -49,6 +51,11 @@ interface EmployeeRepository {
     suspend fun getLaboratorians(): List<Laboratorian>
 }
 
+interface StatusRepository {
+    suspend fun getStatuses(): List<ReportStatus>
+    suspend fun getStatusById(id: Int): ReportStatus?
+}
+
 interface ReagentRepository {
     suspend fun getLayers(): List<Layer>
 }
@@ -57,7 +64,9 @@ interface ReagentRepository {
 interface ReportBlenderRepository {
     suspend fun insertReportBlender(
         report: BlenderReport,
-        blenderReportCode: String
+        blenderReportCode: String,
+        reportFile: File,
+        context: Context
     ): Int?
 
     suspend fun updateReportReagents(
@@ -69,9 +78,16 @@ interface ReportBlenderRepository {
         reagentName: String
     ): Int?
     suspend fun getSupervisorReports(): List<BaseReport>
+    suspend fun getEngineerReports(): List<BaseReport>
     suspend fun getBlenderReportsSupervisor(): List<BlenderReport>
     suspend fun getReportPhotos(reportId: Int, reportType: ReportTypeEnum): List<ReportPhoto>
     suspend fun uploadSupervisorSignature(
+        reportId: Int,
+        reportType: ReportTypeEnum,
+        signatureFile: File
+    ): String?
+
+    suspend fun uploadEngineerSignature(
         reportId: Int,
         reportType: ReportTypeEnum,
         signatureFile: File
@@ -101,6 +117,8 @@ interface AcidReportRepository {
         report: AcidReport,
         acidReportCode: String,
         photos: Map<PhotoType, Uri>,
+        reportFile: File,
+        context: Context
     ): Int?
 
     suspend fun getAcidReportsForEmployee(employeeId: Int): List<AcidReport>

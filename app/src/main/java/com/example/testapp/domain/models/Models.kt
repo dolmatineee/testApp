@@ -1,8 +1,9 @@
 package com.example.testapp.domain.models
 
 import android.net.Uri
+import com.example.testapp.remote.models.ReagentDto
+import com.example.testapp.remote.models.ReportDto
 import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
 
 // Field.kt
 data class Field(
@@ -54,18 +55,21 @@ data class Employee(
 
 data class BlenderReport(
     override val id: Int? = null,
-    val code: String,
+    override val code: String,
     override val employeeId: Int,
     override val fieldId: Int,
     override val wellId: Int,
     override val layerId: Int,
     override val customerId: Int,
+    override val status: String? = null,
     override val fileUrl: String? = null,
     override val createdAt: String? = null,
     override val reportName: String,
     val reagents: List<Reagent>,
     val supervisorSignatureUrl: String? = null,
-    val engineerSignatureUrl: String? = null
+    val engineerSignatureUrl: String? = null,
+    override val supervisor_signature_url: String? = null,
+    override val engineer_signature_url: String? = null
 ): BaseReport {
     override val reportType: ReportTypeEnum = ReportTypeEnum.BLENDER
 }
@@ -139,6 +143,7 @@ data class PhotoType(
 
 data class ReportFilters(
     val reportType: ReportTypeEnum? = null,
+    val status: ReportStatus? = null,
     var fields: List<Field> = emptyList(),
     var wells: List<Well> = emptyList(),
     var layers: List<Layer> = emptyList(),
@@ -156,12 +161,15 @@ data class AcidReport(
     override val layerId: Int,
     override val customerId: Int,
     val labTechnicianId: Int,
+    override val status: String? = null,
     override val fileUrl: String? = null,
     override val createdAt: String? = null,
     override val reportName: String,
-    val code: String,
+    override val code: String,
     val concentratedAcidPercentage: Double,
-    val preparedAcidPercentage: Double
+    val preparedAcidPercentage: Double,
+    override val supervisor_signature_url: String? = null,
+    override val engineer_signature_url: String? = null
 ): BaseReport {
     override val reportType: ReportTypeEnum = ReportTypeEnum.ACID
 }
@@ -179,10 +187,13 @@ data class GelReport(
     override val wellId: Int,
     override val layerId: Int,
     override val customerId: Int,
+    override val status: String? = null,
     override val fileUrl: String? = null,
     override val createdAt: String? = null,
     override val reportName: String,
-    val code: String
+    override val code: String,
+    override val supervisor_signature_url: String? = null,
+    override val engineer_signature_url: String? = null
 ): BaseReport {
     override val reportType: ReportTypeEnum = ReportTypeEnum.GEL
 }
@@ -200,17 +211,73 @@ sealed interface BaseReport {
     val wellId: Int?
     val layerId: Int?
     val customerId: Int?
+    val status: String?
     val fileUrl: String?
     val createdAt: String?
     val reportName: String
     val reportType: ReportTypeEnum
+    val code: String
+    val supervisor_signature_url: String?
+    val engineer_signature_url: String?
 }
 
+sealed class ReportData {
+    abstract val employee: Employee
+    abstract val customer: Customer
+    abstract val field: Field
+    abstract val well: Well
+    abstract val layer: Layer
+    abstract val report: BaseReport
+    abstract val createdAt: String
+
+    data class Blender(
+        override val employee: Employee,
+        override val customer: Customer,
+        override val field: Field,
+        override val well: Well,
+        override val layer: Layer,
+        override val report: BlenderReport,
+        val testDetails: List<BlenderReportTestDetail>,
+        val reagents: List<Reagent>,
+        override val createdAt: String
+    ) : ReportData()
+
+    data class Acid(
+        override val employee: Employee,
+        override val customer: Customer,
+        override val field: Field,
+        override val well: Well,
+        override val layer: Layer,
+        override val report: AcidReport,
+        val labTechnician: Employee?,
+        override val createdAt: String
+    ) : ReportData()
+
+    data class Gel(
+        override val employee: Employee,
+        override val customer: Customer,
+        override val field: Field,
+        override val well: Well,
+        override val layer: Layer,
+        override val report: GelReport,
+        override val createdAt: String
+    ) : ReportData()
+}
+data class ReportStatus(
+    val id: Int,
+    val status_name: String
+)
 
 enum class ReportTypeEnum(val id: Int, val displayName: String) {
+
     BLENDER(1, "Блендер"),
     ACID(2, "Кислота"),
     GEL(3, "Гель");
 
 
 }
+
+data class ReportWithStatus(
+    val report: BaseReport,
+    val status: ReportStatus?
+)

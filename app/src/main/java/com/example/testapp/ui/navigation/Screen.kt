@@ -38,6 +38,8 @@ sealed class Screen(
     object SupervisorSettings : Screen(route = ROUTE_SUPERVISOR_SUPERVISOR_SETTINGS)
     object SupervisorSignature : Screen(route = ROUTE_SUPERVISOR_SIGNATURE)
 
+    object EngineerCurrentReports : Screen(route = ROUTE_ENGINEER_CURRENT_REPORTS)
+
 
     private companion object {
         const val ROUTE_HOME = "home"
@@ -65,6 +67,10 @@ sealed class Screen(
         const val ROUTE_SUPERVISOR_REPORTS_FILTER = "supervisor_reports_filter"
         const val ROUTE_SUPERVISOR_SUPERVISOR_SETTINGS = "supervisor_settings"
         const val ROUTE_SUPERVISOR_SIGNATURE = "supervisor_signature"
+
+
+
+        const val ROUTE_ENGINEER_CURRENT_REPORTS = "engineer_current_reports"
 
     }
 }
