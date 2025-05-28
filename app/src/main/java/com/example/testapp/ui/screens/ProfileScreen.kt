@@ -95,6 +95,7 @@ fun ProfileScreen(
 
                         IconButton(
                             onClick = {
+                                viewModel.clearUserData()
                                 onLogoutClickListener()
                             },
                             colors = IconButtonDefaults.iconButtonColors(
@@ -106,7 +107,7 @@ fun ProfileScreen(
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.baseline_logout_24),
-                                contentDescription = "Filter",
+                                contentDescription = "logout",
                             )
                         }
                     }
@@ -133,13 +134,13 @@ fun ProfileScreen(
                     fullName = fullName,
                     position = position
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
 
+            }
 
             item {
 
-                if (position != "Мастер ГРП ООО ЛРС") {
+                if (position !in listOf("Мастер ГРП ООО ЛРС", "Администратор")) {
+                    Spacer(modifier = Modifier.height(16.dp))
                     Spacer(
                         modifier = Modifier
                             .fillMaxWidth()

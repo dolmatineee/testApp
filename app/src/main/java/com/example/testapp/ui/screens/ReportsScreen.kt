@@ -1,6 +1,10 @@
 package com.example.testapp.ui.screens
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.Uri
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -42,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -138,7 +143,7 @@ fun ReportsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(reports) { report ->
-
+                        Log.e("report", report.fileUrl.toString())
                         ReportItem(
                             report = report,
                             reportStatus = report.status
@@ -176,6 +181,41 @@ fun ReportItem(
     reportStatus: String?
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    // Разрешаем раскрывать только завершенные отчеты
+    val canExpand = reportStatus == "Завершен"
+
+    // Функция для скачивания файла
+    fun downloadFile() {
+        report.fileUrl?.let { url ->
+            try {
+                val intent = Intent(Intent.ACTION_VIEW)
+                intent.data = Uri.parse(url)
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Ошибка при открытии файла", Toast.LENGTH_SHORT).show()
+            }
+        } ?: run {
+            Toast.makeText(context, "Файл недоступен", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Функция для шаринга файла
+    fun shareFile() {
+        report.fileUrl?.let { url ->
+            try {
+                val shareIntent = Intent(Intent.ACTION_SEND)
+                shareIntent.type = "text/plain"
+                shareIntent.putExtra(Intent.EXTRA_TEXT, url)
+                context.startActivity(Intent.createChooser(shareIntent, "Поделиться отчетом"))
+            } catch (e: Exception) {
+                Toast.makeText(context, "Ошибка при попытке поделиться", Toast.LENGTH_SHORT).show()
+            }
+        } ?: run {
+            Toast.makeText(context, "Файл недоступен", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Card(
         modifier = Modifier
@@ -225,24 +265,26 @@ fun ReportItem(
                     )
                 }
 
-                IconButton(
-                    onClick = { isExpanded = !isExpanded },
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = Color.Black.copy(0.7f),
-                        contentColor = Color.White
-                    )
-                ) {
-                    Icon(
-                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (isExpanded) "Свернуть" else "Развернуть"
-                    )
+                if ( canExpand) {
+                    IconButton(
+                        onClick = { isExpanded = canExpand && !isExpanded },
+                        enabled = canExpand,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor =  Color.Black.copy(0.7f) ,
+                            contentColor =  Color.White
+                        )
+                    ) {
+                        Icon(
+                            imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (isExpanded) "Свернуть" else "Развернуть"
+                        )
+                    }
                 }
+
 
             }
 
-
-
-            if (isExpanded) {
+            if (isExpanded && canExpand) {
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Spacer(
@@ -261,28 +303,21 @@ fun ReportItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ActionButtonForReport(
-                        painter = painterResource(R.drawable.baseline_content_copy_24),
-                        text = "Использовать",
-                        onClick = { }
-                    )
-
-                    ActionButtonForReport(
                         painter = painterResource(R.drawable.outline_file_download_24),
                         text = "Скачать",
-                        onClick = { }
+                        onClick = { downloadFile() }
                     )
 
                     ActionButtonForReport(
                         painter = painterResource(R.drawable.baseline_share_24),
                         text = "Поделиться",
-                        onClick = { }
+                        onClick = { shareFile() }
                     )
                 }
             }
         }
     }
 }
-
 @Composable
 fun ActionButtonForReport(
     painter: Painter,

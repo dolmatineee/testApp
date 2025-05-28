@@ -49,4 +49,16 @@ sealed class NavigationItem(
         screen = Screen.EngineerCurrentReports,
         icon = Icons.Filled.Home
     )
+
+
+
+    object AdministratorStats: NavigationItem(
+        screen = Screen.AdministratorStats,
+        icon = Icons.Filled.Home
+    )
+
+    object AdministratorEmployees: NavigationItem(
+        screen = Screen.AdministratorEmployees,
+        icon = Icons.Filled.Menu
+    )
 }

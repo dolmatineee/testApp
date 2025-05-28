@@ -12,6 +12,7 @@ import com.example.testapp.domain.models.Layer
 import com.example.testapp.domain.models.Reagent
 import com.example.testapp.domain.models.BlenderReport
 import com.example.testapp.domain.models.GelReport
+import com.example.testapp.domain.models.Position
 import com.example.testapp.domain.models.ReportFilters
 import com.example.testapp.domain.models.ReportPhoto
 import com.example.testapp.domain.models.ReportStatus
@@ -123,6 +124,53 @@ class GetLaboratorians @Inject constructor(
 ) {
     suspend operator fun invoke(): List<Laboratorian> {
         return employeeRepositoryImpl.getLaboratorians()
+    }
+}
+
+class GetAllEmployees @Inject constructor(
+    private val employeeRepositoryImpl: EmployeeRepositoryImpl
+) {
+    suspend operator fun invoke(): List<Employee> {
+        return employeeRepositoryImpl.getAllEmployees()
+    }
+}
+
+// Получение сотрудника по ID
+class GetEmployeeById @Inject constructor(
+    private val employeeRepositoryImpl: EmployeeRepositoryImpl
+) {
+    suspend operator fun invoke(id: Int): Employee? {
+        return employeeRepositoryImpl.getEmployeeById(id)
+    }
+}
+
+// Обновление данных сотрудника
+class UpdateEmployee @Inject constructor(
+    private val employeeRepositoryImpl: EmployeeRepositoryImpl
+) {
+    suspend operator fun invoke(employee: Employee): Boolean {
+        return employeeRepositoryImpl.updateEmployee(employee)
+    }
+}
+
+// Получение всех должностей
+class GetAllPositions @Inject constructor(
+    private val employeeRepositoryImpl: EmployeeRepositoryImpl
+) {
+    suspend operator fun invoke(): List<Position> {
+        return employeeRepositoryImpl.getAllPositions()
+    }
+}
+
+
+
+// Поиск сотрудников по имени
+class SearchEmployees @Inject constructor(
+    private val employeeRepositoryImpl: EmployeeRepositoryImpl
+) {
+    suspend operator fun invoke(query: String): List<Employee> {
+        return employeeRepositoryImpl.getAllEmployees()
+            .filter { it.fullName.contains(query, ignoreCase = true) }
     }
 }
 

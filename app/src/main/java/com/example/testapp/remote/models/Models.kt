@@ -17,6 +17,7 @@ import com.example.testapp.domain.models.ReportStatus
 import com.example.testapp.domain.models.ReportType
 import com.example.testapp.domain.models.Well
 import com.example.testapp.utils.StringOrIntSerializer
+import com.google.gson.annotations.SerializedName
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -308,7 +309,7 @@ data class PhotoTypeDto(
     @SerialName("id")
     val id: Int,
 
-    @SerialName("statusName")
+    @SerialName("name")
     val name: String,
 
     @SerialName("description")
@@ -325,6 +326,7 @@ data class PhotoTypeDto(
         )
     }
 }
+
 
 
 @Serializable

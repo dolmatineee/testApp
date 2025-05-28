@@ -2,6 +2,7 @@ package com.example.testapp.utils
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -9,6 +10,7 @@ import com.example.testapp.domain.models.Customer
 import com.example.testapp.domain.models.Field
 import com.example.testapp.domain.models.Layer
 import com.example.testapp.domain.models.Well
+import org.apache.commons.imaging.common.ImageMetadata
 import org.apache.poi.util.Units
 import org.apache.poi.xwpf.usermodel.*
 import java.io.ByteArrayInputStream
@@ -18,13 +20,16 @@ import java.io.ByteArrayOutputStream
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-
 fun generateAcidReport(
     customer: Customer,
     field: Field,
     layer: Layer,
     well: Well,
+    preparedAcid: String,
+    concentratedAcid: String,
     context: Context,
+    photoDensimeterConcentratedAcid: Uri,
+    photoDensimeterPreparedAcid: Uri,
     photo5000General: Uri,
     photo5000AfterPour_25_75: Uri,
     photo5000AfterPour_50_50: Uri,
@@ -36,22 +41,51 @@ fun generateAcidReport(
     photo2000AfterPour_75_25: Uri,
     photo2000AfterPour_spent: Uri
 ): File {
-    // Создаем новый документ
     val document = XWPFDocument()
 
-    // Добавляем титульный лист
-    val titlePage = document.createParagraph()
-    titlePage.alignment = ParagraphAlignment.CENTER
-    val titleRun = titlePage.createRun()
-    titleRun.setText("Лабораторный отчет по кислоте")
-    titleRun.isBold = true
-    titleRun.fontSize = 20
-    titleRun.fontFamily = "Times New Roman"
-    repeat(6) {
-        titleRun.addBreak()
-    }
+    // ===== Page 1 (Титульный лист) =====
+    val contactParagraph = document.createParagraph()
+    val contactRun = contactParagraph.createRun()
+    contactRun.setText("Тел:факс: 8(8553) 38-64-36, факс: 8(8553) 38-64-36; E-mail: armykk@tagras.ru")
+    contactRun.fontSize = 10
+    contactRun.fontFamily = "Times New Roman"
+    contactRun.addBreak()
 
-    // Добавляем информацию о месторождении, скважине, пласте и дате проведения
+    // Название компании
+    val companyParagraph = document.createParagraph()
+    companyParagraph.alignment = ParagraphAlignment.CENTER
+    val companyRun = companyParagraph.createRun()
+    companyRun.setText("ОБЩЕСТВО С ОГРАНИЧЕННОЙ")
+    companyRun.isBold = true
+    companyRun.fontSize = 12
+    companyRun.addBreak()
+    companyRun.setText("ОТВЕТСТВЕННОСТЬЮ")
+    companyRun.isBold = true
+    companyRun.addBreak()
+    companyRun.setText("«Лениногорск - РемСервис»")
+    companyRun.isBold = true
+    companyRun.addBreak()
+
+    val separatorParagraphForTitle = document.createParagraph()
+    val separatorRunForTitle = separatorParagraphForTitle.createRun()
+    repeat(6) {
+        separatorRunForTitle.addBreak()
+    }
+    val titleParagraph = document.createParagraph()
+    titleParagraph.alignment = ParagraphAlignment.CENTER
+    val titleRun = titleParagraph.createRun()
+    titleRun.setText("Проведение тестов перед проведением")
+    titleRun.addBreak()
+    titleRun.setText("КГРП согласно стандартам по ОПЗ,")
+    titleRun.addBreak()
+    titleRun.setText("БОПЗ, ГРП, КГРП")
+    titleRun.addBreak()
+    titleRun.setText("(Quality Assurance Quality Control)")
+    titleRun.fontFamily = "Times New Roman"
+    titleRun.isBold = true
+    titleRun.fontSize = 24
+    titleRun.addBreak()
+
     val infoParagraph = document.createParagraph()
     infoParagraph.alignment = ParagraphAlignment.LEFT
     val infoRun = infoParagraph.createRun()
@@ -81,91 +115,240 @@ fun generateAcidReport(
     infoRun.fontSize = 16
     infoRun.isBold = true
     infoRun.fontFamily = "Times New Roman"
-    repeat(10) {
-        infoRun.addBreak()
+
+    infoRun.addBreak()
+
+    // Заголовок "Лабораторный отчет"
+    val reportTitleParagraph = document.createParagraph()
+    reportTitleParagraph.alignment = ParagraphAlignment.CENTER
+    val reportTitleRun = reportTitleParagraph.createRun()
+    reportTitleRun.setText("Лабораторный отчет")
+    reportTitleRun.isBold = true
+    reportTitleRun.fontSize = 18
+
+    repeat(6) {
+        reportTitleRun.addBreak()
     }
 
-    // Добавляем информацию о заказчике внизу титульного листа
+    // Заказчик
     val customerParagraph = document.createParagraph()
     customerParagraph.alignment = ParagraphAlignment.CENTER
     val customerRun = customerParagraph.createRun()
-    customerRun.setText("Для ${customer.companyName}.")
-    customerRun.fontSize = 16
-    customerRun.isBold = true
-    customerRun.fontFamily = "Times New Roman"
+    customerRun.setText("Для ${customer.companyName}")
     customerRun.addBreak()
     customerRun.setText("${currentDate.year} г.")
-    customerRun.fontSize = 16
-    customerRun.fontFamily = "Times New Roman"
+    customerRun.fontSize = 18
+    customerRun.isBold = true
+    customerRun.addBreak()
 
-    // Добавляем разрыв страницы после титульного листа
-    val breakParagraph = document.createParagraph()
-    val breakRun = breakParagraph.createRun()
-    breakRun.addBreak(BreakType.PAGE)
+    // Разрыв страницы
+    document.createParagraph().createRun().addBreak(BreakType.PAGE)
 
-    // Добавляем таблицу для фотографий
-    val photoTable = document.createTable()
-    photoTable.setWidth("100%")
+    // ===== Page 2 =====
+    // Таблица с основной информацией
+    val infoTable = document.createTable(5, 2)
+    infoTable.setWidth("100%")
 
-    // Максимальная ширина изображения
-    val maxImageWidth = 500.0
+    val rows = listOf(
+        "Компания" to customer.companyName,
+        "Месторождение" to field.name,
+        "Скважина" to well.wellNumber,
+        "Дата" to formattedDate,
+        "Лаборант" to "Ханбиков Э.И."
+    )
 
-    // Функция для добавления фотографии в документ
-    fun addPhotoToDocument(photoUri: Uri, description: String) {
-        val photoRow = photoTable.createRow()
-        val photoCell = photoRow.getCell(0)
-
-        val imageParagraph = photoCell.addParagraph()
-        imageParagraph.alignment = ParagraphAlignment.CENTER
-        val imageRun = imageParagraph.createRun()
-
-        val inputStream = context.contentResolver.openInputStream(photoUri)
-        val imageBytes = inputStream?.readBytes()
-
-        if (imageBytes != null) {
-            val (width, height) = getImageDimensions(imageBytes)
-            val aspectRatio = width.toDouble() / height.toDouble()
-
-            var imageHeight = 400.0
-            var imageWidth = imageHeight * aspectRatio
-
-            if (imageWidth > maxImageWidth) {
-                imageWidth = maxImageWidth
-                imageHeight = imageWidth / aspectRatio
-            }
-
-            imageRun.addPicture(
-                ByteArrayInputStream(imageBytes),
-                XWPFDocument.PICTURE_TYPE_JPEG,
-                "image.jpg",
-                Units.toEMU(imageWidth),
-                Units.toEMU(imageHeight)
-            )
-        }
-
-        val descriptionRow = photoTable.createRow()
-        val descriptionCell = descriptionRow.getCell(0)
-        descriptionCell.text = description
-        descriptionCell.paragraphs[0].alignment = ParagraphAlignment.CENTER
+    rows.forEachIndexed { index, (label, value) ->
+        val row = infoTable.getRow(index)
+        row.getCell(0).setText(label)
+        row.getCell(1).setText(value)
     }
 
-    // Добавляем фотографии
-    addPhotoToDocument(photo5000General, "Фотография плотномера при замере плотности концентрированной кислоты")
-    addPhotoToDocument(photo5000AfterPour_25_75, "Пролив 25/75")
-    addPhotoToDocument(photo5000AfterPour_50_50, "Пролив 50/50")
-    addPhotoToDocument(photo5000AfterPour_75_25, "Пролив 75/25")
-    addPhotoToDocument(photo5000AfterPour_spent, "Пролив отраб")
+    // Приготовление кислоты
+    val acidParagraph = document.createParagraph()
+    acidParagraph.spacingBefore = 400
+    val acidRun = acidParagraph.createRun()
+    acidRun.setText("1. Приготовили $preparedAcid раствор синтетической HCl из $concentratedAcid HCl (Кислота соляная синтетическая техническая ГОСТ 857-95).")
+    acidRun.addBreak()
 
-    addPhotoToDocument(photo2000General, "Фотография плотномера при замере плотности 15% HCl кислоты")
-    addPhotoToDocument(photo2000AfterPour_25_75, "Пролив 25/75")
-    addPhotoToDocument(photo2000AfterPour_50_50, "Пролив 50/50")
-    addPhotoToDocument(photo2000AfterPour_75_25, "Пролив 75/25")
-    addPhotoToDocument(photo2000AfterPour_spent, "Пролив отраб")
+    // Таблица с загрузками
+    val loadingTable = document.createTable(4, 2)
+    loadingTable.setWidth("100%")
+
+    loadingTable.getRow(0).getCell(0).setText("Загрузка: на контроль железа на 5000ppm")
+    loadingTable.getRow(0).getCell(1).setText("Загрузка: на контроль железа на 2000ppm")
+
+    loadingTable.getRow(1).getCell(0).setText("Ингибитор коррозии AS-CO - 1 л/м3")
+    loadingTable.getRow(1).getCell(1).setText("Ингибитор коррозии AS-CO - 1 л/м3")
+
+    loadingTable.getRow(2).getCell(0).setText("Стабилизатор железа AS-IR - 12 л/м3")
+    loadingTable.getRow(2).getCell(1).setText("Стабилизатор железа AS-IR - 7 л/м3")
+
+    loadingTable.getRow(3).getCell(0).setText("Дезмульгатор AS-DA - 8 л/м3")
+    loadingTable.getRow(3).getCell(1).setText("Дезмульгатор AS-DA - 8 л/м3")
+
+    // Замеры плотности
+    val measureParagraph = document.createParagraph()
+    measureParagraph.spacingBefore = 400
+    val measureRun = measureParagraph.createRun()
+    measureRun.setText("2. Замерили плотность и концентрацию кислоты плотномером приготовленного кислотного состава.")
+    measureRun.addBreak()
+
+    // ===== Таблица для фотографий плотномеров 2x1 =====
+    val densimeterTable = document.createTable(1, 2)
+    densimeterTable.setWidth("100%")
+
+    // Функция для добавления фото в ячейку таблицы
+    fun addPhotoToCell(cell: XWPFTableCell, uri: Uri, description: String) {
+        val paragraph = cell.addParagraph()
+        paragraph.alignment = ParagraphAlignment.CENTER
+        val run = paragraph.createRun()
+
+        try {
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                val imageBytes = inputStream.readBytes()
+                val (width, height) = getImageDimensions(imageBytes)
+                val aspectRatio = width.toDouble() / height.toDouble()
+
+                val targetHeight = 200.0
+                val targetWidth = targetHeight * aspectRatio
+
+                run.addPicture(
+                    ByteArrayInputStream(imageBytes),
+                    XWPFDocument.PICTURE_TYPE_JPEG,
+                    "image.jpg",
+                    Units.toEMU(targetWidth),
+                    Units.toEMU(targetHeight)
+                )
+
+                // Добавляем описание под фото
+                val descParagraph = cell.addParagraph()
+                descParagraph.alignment = ParagraphAlignment.CENTER
+                descParagraph.createRun().setText(description)
+            }
+        } catch (e: Exception) {
+            cell.text = "Ошибка загрузки изображения"
+        }
+    }
+
+    // Функция для добавления фото вне таблицы (по центру)
+    fun addCenteredPhoto(document: XWPFDocument, uri: Uri, description: String) {
+        val paragraph = document.createParagraph()
+        paragraph.alignment = ParagraphAlignment.CENTER
+        val run = paragraph.createRun()
+
+        try {
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                val imageBytes = inputStream.readBytes()
+                val (width, height) = getImageDimensions(imageBytes)
+                val aspectRatio = width.toDouble() / height.toDouble()
+
+                val targetHeight = 300.0
+                val targetWidth = targetHeight * aspectRatio
+
+                run.addPicture(
+                    ByteArrayInputStream(imageBytes),
+                    XWPFDocument.PICTURE_TYPE_JPEG,
+                    "image.jpg",
+                    Units.toEMU(targetWidth),
+                    Units.toEMU(targetHeight)
+                )
+
+                // Добавляем описание под фото
+                val descParagraph = document.createParagraph()
+                descParagraph.alignment = ParagraphAlignment.CENTER
+                descParagraph.createRun().setText(description)
+            }
+        } catch (e: Exception) {
+            run.setText("Ошибка загрузки изображения")
+        }
+    }
+
+    // Добавляем фотографии плотномеров
+    densimeterTable.getRow(0).getCell(0).apply {
+        addPhotoToCell(this, photoDensimeterConcentratedAcid,
+            "Фотография плотномера при замере плотности концентрированной кислоты")
+    }
+
+    densimeterTable.getRow(0).getCell(1).apply {
+        addPhotoToCell(this, photoDensimeterPreparedAcid,
+            "Фотография плотномера при замере плотности $preparedAcid HCl кислоты")
+    }
+
+    // Разрыв страницы
+    document.createParagraph().createRun().addBreak(BreakType.PAGE)
+
+    // ===== Page 3-5 (Тесты) =====
+    // Функция для добавления тестовых страниц с таблицами фотографий
+    fun addTestPage(title: String, ppm: String, generalPhoto: Uri, photos: List<Pair<String, Uri>>) {
+        // Заголовок теста
+        val testTitleParagraph = document.createParagraph()
+        testTitleParagraph.alignment = ParagraphAlignment.CENTER
+        val testTitleRun = testTitleParagraph.createRun()
+        testTitleRun.setText(title)
+        testTitleRun.isBold = true
+        testTitleRun.fontSize = 14
+        testTitleRun.addBreak()
+        testTitleRun.setText("Кислота, рассчитанная на контроль железа $ppm")
+        testTitleRun.isBold = false
+        testTitleRun.fontSize = 12
+        testTitleRun.addBreak()
+
+        // Пролив через сито
+        val sieveParagraph = document.createParagraph()
+        sieveParagraph.alignment = ParagraphAlignment.CENTER
+        sieveParagraph.spacingBefore = 200
+        val sieveRun = sieveParagraph.createRun()
+        sieveRun.setText("Пролив через сито 100 меш")
+        sieveRun.addBreak()
+
+        // Добавляем общее фото вне таблицы по центру
+        addCenteredPhoto(document, generalPhoto, "Общий вид теста $ppm")
+
+        // ===== Таблица для фотографий проливов 4x2 =====
+        val pourTable = document.createTable(photos.size, 2)
+        pourTable.setWidth("100%")
+
+        // Добавляем фотографии проливов
+        photos.forEachIndexed { index, (desc, uri) ->
+            val row = pourTable.getRow(index)
+            row.getCell(0).apply {
+                addPhotoToCell(this, uri, "")
+            }
+            row.getCell(1).text = "Пролив $desc\nПролив чистый, осадка нет"
+        }
+
+        document.createParagraph().createRun().addBreak(BreakType.PAGE)
+    }
+
+    // Добавляем тесты для 5000ppm
+    addTestPage(
+        "Тест на совместимость и распад эмульсии",
+        "5000ppm",
+        photo5000General,
+        listOf(
+            "25/75" to photo5000AfterPour_25_75,
+            "50/50" to photo5000AfterPour_50_50,
+            "75/25" to photo5000AfterPour_75_25,
+            "отраб" to photo5000AfterPour_spent
+        )
+    )
+
+    // Добавляем тесты для 2000ppm
+    addTestPage(
+        "Тест на совместимость и распад эмульсии",
+        "2000ppm",
+        photo2000General,
+        listOf(
+            "25/75" to photo2000AfterPour_25_75,
+            "50/50" to photo2000AfterPour_50_50,
+            "75/25" to photo2000AfterPour_75_25,
+            "отраб" to photo2000AfterPour_spent
+        )
+    )
 
 
-    // Сохраняем документ во временный файл
+    // Сохранение документа
     val file = File.createTempFile("report", ".docx", context.cacheDir)
     document.write(FileOutputStream(file))
     return file
 }
-

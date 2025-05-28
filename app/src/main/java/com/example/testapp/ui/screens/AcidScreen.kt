@@ -1079,6 +1079,29 @@ fun AcidScreen(
                         selectedCustomer != null
                     ) {
                         viewModel.viewModelScope.launch {
+
+                            val reportFile = generateAcidReport(
+                                customer = selectedCustomer!!,
+                                field = selectedField!!,
+                                layer = selectedLayer!!,
+                                well = selectedWell!!,
+                                context = context,
+                                photo5000General = photo2000General!!,
+                                photo5000AfterPour_25_75 = photo5000AfterPour_25_75!!,
+                                photo5000AfterPour_50_50 = photo5000AfterPour_50_50!!,
+                                photo5000AfterPour_75_25 = photo5000AfterPour_75_25!!,
+                                photo5000AfterPour_spent = photo5000AfterPour_spent!!,
+                                photo2000General = photo2000General!!,
+                                photo2000AfterPour_25_75 = photo2000AfterPour_25_75!!,
+                                photo2000AfterPour_50_50 = photo2000AfterPour_50_50!!,
+                                photo2000AfterPour_75_25 = photo2000AfterPour_75_25!!,
+                                photo2000AfterPour_spent = photo2000AfterPour_spent!!,
+                                preparedAcid = preparedAcid,
+                                concentratedAcid = concentratedAcid,
+                                photoDensimeterConcentratedAcid = photoDensimeterConcentratedAcid!!,
+                                photoDensimeterPreparedAcid = photoDensimeterPreparedAcid!!
+                            )
+
                             val report = AcidReport(
                                 employeeId = employeeId,
                                 fieldId = selectedField!!.id,
@@ -1096,7 +1119,10 @@ fun AcidScreen(
                             val reportId = viewModel.saveReportAndGetId(
                                 report = report,
                                 acidReportCode = uniqueCode.value,
-                                context = context
+                                context = context,
+                                preparedAcid = preparedAcid,
+                                concentratedAcid = concentratedAcid,
+                                reportFile = reportFile
                             )
 
 

@@ -3,6 +3,8 @@ package com.example.testapp.domain.models
 import android.net.Uri
 import com.example.testapp.remote.models.ReagentDto
 import com.example.testapp.remote.models.ReportDto
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.datetime.Instant
 
 // Field.kt
@@ -280,4 +282,23 @@ enum class ReportTypeEnum(val id: Int, val displayName: String) {
 data class ReportWithStatus(
     val report: BaseReport,
     val status: ReportStatus?
+)
+
+
+data class ReportsStatistics(
+    val blenderCount: Int,
+    val acidCount: Int,
+    val gelCount: Int,
+    val total: Int
+)
+
+data class HourlyReportData(
+    val hour: Int,
+    val count: Int
+)
+
+data class ChartData(
+    val sessionsByHour: Map<Int, Int>,
+    val yAxisLabels: List<Int>,
+    val xAxisLabels: List<Int>
 )

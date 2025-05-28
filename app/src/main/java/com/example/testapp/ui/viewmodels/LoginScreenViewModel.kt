@@ -19,7 +19,6 @@ class LoginScreenViewModel @Inject constructor(
     fun login(phoneNumber: String, password: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             val employee = loginEmployee(phoneNumber, password)
-            Log.e("dfgfgfdgdfg", employee!!.position)
             if (employee != null) {
                 sharedPreferences.edit {
                     putString("fullName", employee.fullName)

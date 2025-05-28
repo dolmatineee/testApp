@@ -41,6 +41,10 @@ sealed class Screen(
     object EngineerCurrentReports : Screen(route = ROUTE_ENGINEER_CURRENT_REPORTS)
 
 
+    object AdministratorStats : Screen(route = ROUTE_ADMINISTRATOR_STATS)
+    object AdministratorEmployees : Screen(route = ROUTE_ADMINISTRATOR_EMPLOYEES)
+
+
     private companion object {
         const val ROUTE_HOME = "home"
         const val ROUTE_TYPES_REPORTS = "types_reports"
@@ -71,6 +75,9 @@ sealed class Screen(
 
 
         const val ROUTE_ENGINEER_CURRENT_REPORTS = "engineer_current_reports"
+
+        const val ROUTE_ADMINISTRATOR_STATS = "administrator_stats"
+        const val ROUTE_ADMINISTRATOR_EMPLOYEES = "administrator_employees"
 
     }
 }

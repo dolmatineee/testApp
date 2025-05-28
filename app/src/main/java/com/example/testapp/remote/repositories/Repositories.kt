@@ -15,11 +15,13 @@ import com.example.testapp.domain.models.Reagent
 import com.example.testapp.domain.models.BlenderReport
 import com.example.testapp.domain.models.BlenderReportTestDetail
 import com.example.testapp.domain.models.GelReport
+import com.example.testapp.domain.models.Position
 import com.example.testapp.domain.models.ReportFilters
 import com.example.testapp.domain.models.ReportPhoto
 import com.example.testapp.domain.models.ReportStatus
 import com.example.testapp.domain.models.ReportType
 import com.example.testapp.domain.models.ReportTypeEnum
+import com.example.testapp.domain.models.ReportsStatistics
 import com.example.testapp.domain.models.Well
 import com.example.testapp.domain.repositories.AcidReportRepository
 import com.example.testapp.domain.repositories.CustomerRepository
@@ -31,6 +33,7 @@ import com.example.testapp.domain.repositories.PhotoRepository
 import com.example.testapp.domain.repositories.ReportBlenderRepository
 import com.example.testapp.domain.repositories.ReportRepository
 import com.example.testapp.domain.repositories.ReportTypeRepository
+import com.example.testapp.domain.repositories.ReportsStatisticsRepository
 import com.example.testapp.domain.repositories.StatusRepository
 import com.example.testapp.domain.repositories.WellRepository
 import com.example.testapp.remote.models.AcidReportDto
@@ -50,6 +53,7 @@ import com.example.testapp.remote.models.BlenderReportSignatureLinkDto
 import com.example.testapp.remote.models.BlenderReportTestDetailDto
 import com.example.testapp.remote.models.GelReportDto
 import com.example.testapp.remote.models.GelReportSignatureLinkDto
+
 import com.example.testapp.remote.models.ReportDto
 import com.example.testapp.remote.models.ReportForStatusDto
 import com.example.testapp.remote.models.ReportSignatureDto
@@ -65,7 +69,14 @@ import io.github.jan.supabase.postgrest.query.filter.PostgrestFilterBuilder
 import io.github.jan.supabase.storage.Storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.atTime
+import org.apache.poi.ss.format.CellFormatPart.group
 import java.io.File
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.logging.Logger
 import javax.inject.Inject
 
 class FieldRepositoryImpl @Inject constructor(
@@ -284,6 +295,121 @@ class EmployeeRepositoryImpl @Inject constructor(
             laboratorians.map { it.toDomain() }
         }
 
+    }
+
+    override suspend fun getAllEmployees(): List<Employee> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Используем rpc для выполнения join между таблицами employees и positions
+                val employees = postgrest.from("employees")
+                    .select(
+                        Columns.list(
+                            "id",
+                            "full_name",
+                            "phone_number",
+                            "password",
+                            "positions(position_name)"
+                        )
+                    ) {
+                        // Можно добавить фильтры или сортировку при необходимости
+                    }
+                    .decodeList<EmployeeDto>()
+
+                employees.map { it.toDomain() }
+            } catch (e: Exception) {
+                Logger.getLogger("EmployeeRepository").severe("Error fetching employees: ${e.message}")
+                emptyList()
+            }
+        }
+    }
+
+    override suspend fun getEmployeeById(id: Int): Employee? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val employee = postgrest.from("employees")
+                    .select(
+                        Columns.list(
+                            "id",
+                            "full_name",
+                            "phone_number",
+                            "password",
+                            "positions(position_name)"
+                        )
+                    ) {
+                        filter {
+                            eq("id", id)
+                        }
+                    }
+                    .decodeSingleOrNull<EmployeeDto>()
+
+                employee?.toDomain()
+            } catch (e: Exception) {
+                Logger.getLogger("EmployeeRepository").severe("Error fetching employee by id: ${e.message}")
+                null
+            }
+        }
+    }
+
+    override suspend fun updateEmployee(employee: Employee): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Сначала получаем ID должности по названию
+                val positionId = getPositionIdByName(employee.position)
+
+                if (positionId == null) {
+                    Logger.getLogger("EmployeeRepository").warning("Position not found: ${employee.position}")
+                    return@withContext false
+                }
+
+                // Обновляем данные сотрудника
+                postgrest.from("employees").update({
+                    set("full_name", employee.fullName)
+                    set("phone_number", employee.phoneNumber)
+                    set("password", employee.password)
+                    set("position_id", positionId)
+                }) {
+                    filter {
+                        eq("id", employee.id)
+                    }
+                }
+
+                true
+            } catch (e: Exception) {
+                Logger.getLogger("EmployeeRepository").severe("Error updating employee: ${e.message}")
+                false
+            }
+        }
+    }
+
+    override suspend fun getAllPositions(): List<Position> {
+        return withContext(Dispatchers.IO) {
+            try {
+                postgrest.from("positions")
+                    .select()
+                    .decodeList<PositionDto>()
+                    .map { Position(it.id ?: -1, it.positionName) }
+            } catch (e: Exception) {
+                Logger.getLogger("EmployeeRepository").severe("Error fetching positions: ${e.message}")
+                emptyList()
+            }
+        }
+    }
+
+    private suspend fun getPositionIdByName(positionName: String): Int? {
+        return withContext(Dispatchers.IO) {
+            try {
+                postgrest.from("positions")
+                    .select {
+                        filter {
+                            eq("position_name", positionName)
+                        }
+                    }
+                    .decodeSingleOrNull<PositionDto>()
+                    ?.id
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
 }
 
@@ -1126,7 +1252,7 @@ class PhotoRepositoryImpl @Inject constructor(
 
     private suspend fun getOrCreatePhotoType(name: String): PhotoTypeDto {
         val existingType = postgrest.from("photo_types")
-            .select { filter { eq("statusName", name) } }
+            .select { filter { eq("name", name) } }
             .decodeSingle<PhotoTypeDto>()
         return existingType
     }
@@ -1285,7 +1411,7 @@ class AcidReportRepositoryImpl @Inject constructor(
 
     private suspend fun getOrCreatePhotoType(name: String): PhotoTypeDto {
         val existingType = postgrest.from("photo_types")
-            .select { filter { eq("statusName", name) } }
+            .select { filter { eq("name", name) } }
             .decodeSingle<PhotoTypeDto>()
         return existingType
     }
@@ -1443,10 +1569,11 @@ class GelReportRepositoryImpl @Inject constructor(
 
     private suspend fun getOrCreatePhotoType(name: String): PhotoTypeDto {
         val existingType = postgrest.from("photo_types")
-            .select { filter { eq("statusName", name) } }
+            .select { filter { eq("name", name) } }
             .decodeSingle<PhotoTypeDto>()
         return existingType
     }
 }
+
 
 

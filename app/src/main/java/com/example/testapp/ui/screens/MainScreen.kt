@@ -2,6 +2,7 @@ package com.example.testapp.ui.screens
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -28,6 +29,9 @@ fun MainScreen(
 
     val sharedPreferences = LocalContext.current.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
     val userRole = sharedPreferences.getString("position", "employee")
+    if (userRole != null) {
+        Log.e("userRole", userRole)
+    }
 
     val navigationState = rememberNavigationState()
     val navBackStackEntry by navigationState.navHostController.currentBackStackEntryAsState()
@@ -73,6 +77,14 @@ fun MainScreen(
                             listOf(
                                 NavigationItem.Home,
                                 NavigationItem.History,
+                                NavigationItem.Settings
+                            )
+                        }
+
+                        "Администратор" -> {
+                            listOf(
+                                NavigationItem.AdministratorStats,
+                                NavigationItem.AdministratorEmployees,
                                 NavigationItem.Settings
                             )
                         }
@@ -231,7 +243,7 @@ fun MainScreen(
             supervisorSettingsContent = {
                 ProfileScreen(
                     onLogoutClickListener = {
-
+                        navigationState.navHostController.navigate(Screen.Login.route)
                     },
                     onSignatureCardClickListener = {
                         navigationState.navHostController.navigate(Screen.SupervisorSignature.route)
@@ -297,6 +309,12 @@ fun MainScreen(
             },
             engineerCurrentReportsContent = {
                 EngineerReportsScreen()
+            },
+            administratorStatsContent = {
+                AdministratorStatisticsScreen()
+            },
+            administratorEmployeesContent = {
+                EmployeesScreen()
             }
         )
     }

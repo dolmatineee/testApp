@@ -279,28 +279,15 @@ class AcidScreenViewModel @Inject constructor(
     suspend fun saveReportAndGetId(
         report: AcidReport,
         acidReportCode: String,
-        context: Context
+        context: Context,
+        preparedAcid: String,
+        concentratedAcid: String,
+        reportFile: File
     ): Int? {
 
         _isLoading.value = true
 
-        val reportFile = generateAcidReport(
-            customer = selectedCustomer.value!!,
-            field = selectedField.value!!,
-            layer = selectedLayer.value!!,
-            well = selectedWell.value!!,
-            context = context,
-            photo5000General = photo2000General.value!!,
-            photo5000AfterPour_25_75 = photo5000AfterPour_25_75.value!!,
-            photo5000AfterPour_50_50 = photo5000AfterPour_50_50.value!!,
-            photo5000AfterPour_75_25 = photo5000AfterPour_75_25.value!!,
-            photo5000AfterPour_spent = photo5000AfterPour_spent.value!!,
-            photo2000General = photo2000General.value!!,
-            photo2000AfterPour_25_75 = photo2000AfterPour_25_75.value!!,
-            photo2000AfterPour_50_50 = photo2000AfterPour_50_50.value!!,
-            photo2000AfterPour_75_25 = photo2000AfterPour_75_25.value!!,
-            photo2000AfterPour_spent = photo2000AfterPour_spent.value!!
-        )
+
 
         val photos = mapOf(
             PhotoType.PHOTO_5000_GENERAL to _photo5000General.value,

@@ -1,8 +1,11 @@
 package com.example.testapp.di
 
+import com.example.testapp.domain.usecases.GetAllEmployees
+import com.example.testapp.domain.usecases.GetAllPositions
 import com.example.testapp.domain.usecases.GetBlenderPhotos
 import com.example.testapp.domain.usecases.GetBlenderReports
 import com.example.testapp.domain.usecases.GetCustomers
+import com.example.testapp.domain.usecases.GetEmployeeById
 import com.example.testapp.domain.usecases.GetFields
 import com.example.testapp.domain.usecases.GetLaboratorians
 import com.example.testapp.domain.usecases.GetLayers
@@ -15,6 +18,8 @@ import com.example.testapp.domain.usecases.InsertBlenderReport
 import com.example.testapp.domain.usecases.InsertGelReport
 import com.example.testapp.domain.usecases.InsertPhotoReport
 import com.example.testapp.domain.usecases.LoginEmployee
+import com.example.testapp.domain.usecases.SearchEmployees
+import com.example.testapp.domain.usecases.UpdateEmployee
 import com.example.testapp.domain.usecases.UploadEngineerSignatureBlenderReport
 import com.example.testapp.domain.usecases.UploadSupervisorSignatureBlenderReport
 import com.example.testapp.remote.repositories.AcidReportRepositoryImpl
@@ -94,7 +99,51 @@ object UseCaseModule {
     ): LoginEmployee {
         return LoginEmployee(employeeRepositoryImpl)
     }
+    @Module
+    @InstallIn(SingletonComponent::class)
+    object EmployeesUseCaseModule {
 
+        @Provides
+        @Singleton
+        fun provideGetAllEmployees(
+            employeeRepositoryImpl: EmployeeRepositoryImpl
+        ): GetAllEmployees {
+            return GetAllEmployees(employeeRepositoryImpl)
+        }
+
+        @Provides
+        @Singleton
+        fun provideGetEmployeeById(
+            employeeRepositoryImpl: EmployeeRepositoryImpl
+        ): GetEmployeeById {
+            return GetEmployeeById(employeeRepositoryImpl)
+        }
+
+        @Provides
+        @Singleton
+        fun provideUpdateEmployee(
+            employeeRepositoryImpl: EmployeeRepositoryImpl
+        ): UpdateEmployee {
+            return UpdateEmployee(employeeRepositoryImpl)
+        }
+
+        @Provides
+        @Singleton
+        fun provideGetAllPositions(
+            employeeRepositoryImpl: EmployeeRepositoryImpl
+        ): GetAllPositions {
+            return GetAllPositions(employeeRepositoryImpl)
+        }
+
+
+        @Provides
+        @Singleton
+        fun provideSearchEmployees(
+            employeeRepositoryImpl: EmployeeRepositoryImpl
+        ): SearchEmployees {
+            return SearchEmployees(employeeRepositoryImpl)
+        }
+    }
     @Provides
     @Singleton
     fun provideGetLaboratorians(

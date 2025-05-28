@@ -12,6 +12,7 @@ import com.example.testapp.domain.models.Layer
 import com.example.testapp.domain.models.Reagent
 import com.example.testapp.domain.models.BlenderReport
 import com.example.testapp.domain.models.GelReport
+import com.example.testapp.domain.models.Position
 import com.example.testapp.domain.models.ReportFilters
 import com.example.testapp.domain.models.ReportPhoto
 import com.example.testapp.domain.models.ReportStatus
@@ -19,6 +20,7 @@ import com.example.testapp.domain.models.ReportType
 import com.example.testapp.domain.models.ReportTypeEnum
 import com.example.testapp.domain.models.Well
 import com.example.testapp.utils.PhotoType
+import kotlinx.datetime.LocalDate
 import java.io.File
 
 interface FieldRepository {
@@ -49,6 +51,10 @@ interface EmployeeRepository {
     suspend fun login(phoneNumber: String, password: String): Employee?
     suspend fun getEmployeeIdByPhone(phoneNumber: String): Int?
     suspend fun getLaboratorians(): List<Laboratorian>
+    suspend fun getAllEmployees(): List<Employee>
+    suspend fun getEmployeeById(id: Int): Employee?
+    suspend fun updateEmployee(employee: Employee): Boolean
+    suspend fun getAllPositions(): List<Position>
 }
 
 interface StatusRepository {
@@ -138,3 +144,13 @@ interface GelReportRepository {
 
     suspend fun getReportPhotos(reportId: Int): List<ReportPhoto>
 }
+
+interface ReportsStatisticsRepository {
+    suspend fun getHourlyReportCounts(date: LocalDate): Map<Int, Int>
+    suspend fun getBlenderReportsCount(date: LocalDate): Int
+    suspend fun getAcidReportsCount(date: LocalDate): Int
+    suspend fun getGelReportsCount(date: LocalDate): Int
+    suspend fun getTotalReportsCount(date: LocalDate): Int
+}
+
+
